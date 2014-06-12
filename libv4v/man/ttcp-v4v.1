@@ -1,0 +1,129 @@
+.TH TTCP-V4V "1" "November 2011" "ttcp-v4v " "User Commands"
+.SH NAME
+ttcp-v4v \- Usage of ttcp-v4v
+.SH SYNOPSIS
+.B ttcp
+\fI-t \fR[\fI-options\fR] \fIhost \fR[ \fI< in \fR]
+.SH DESCRIPTION
+.IP
+ttcp \fB\-r\fR [\-options] [multicast\-group][ > out]
+.SS "Common options:"
+.TP
+\fB\-4\fR
+use IPv4
+.TP
+\fB\-6\fR
+use IPv6
+.TP
+\fB\-l\fR ##
+length of bufs read from or written to network (default 8192)
+.TP
+\fB\-u\fR
+use UDP instead of TCP
+.TP
+\fB\-p\fR ##
+port number to send to or listen at (default 5001)
+.HP
+\fB\-s\fR      \fB\-t\fR: source a pattern to network
+.IP
+\fB\-r\fR: sink (discard) all data from network
+.TP
+\fB\-A\fR ##
+align the start of buffers to this modulus (default 16384)
+.TP
+\fB\-O\fR ##
+start buffers at this offset from the modulus (default 0)
+.TP
+\fB\-v\fR
+verbose: print more statistics
+.TP
+\fB\-d\fR
+set SO_DEBUG socket option
+.TP
+\fB\-b\fR ##
+set socket buffer size (if supported)
+.TP
+\fB\-f\fR X
+format for rate: k,K = kilo{bit,byte}; m,M = mega; g,G = giga
+.SS "Options specific to -t:"
+.TP
+\fB\-n\fR ##
+number of source bufs written to network (default 2048)
+.TP
+\fB\-D\fR
+don't buffer TCP writes (sets TCP_NODELAY socket option)
+.TP
+\fB\-w\fR ##
+number of microseconds to wait between each write
+.SS "Options specific to -r:"
+.TP
+\fB\-B\fR
+for \fB\-s\fR, only output full blocks as specified by \fB\-l\fR (for TAR)
+.TP
+\fB\-T\fR
+"touch": access each byte as it's read
+.TP
+\fB\-I\fR if
+Specify the network interface (e.g. eth0) to use
+.PP
+Usage: ttcp \fB\-t\fR [\-options] host [ < in ]
+.IP
+ttcp \fB\-r\fR [\-options] [multicast\-group][ > out]
+.SS "Common options:"
+.TP
+\fB\-4\fR
+use IPv4
+.TP
+\fB\-6\fR
+use IPv6
+.TP
+\fB\-l\fR ##
+length of bufs read from or written to network (default 8192)
+.TP
+\fB\-u\fR
+use UDP instead of TCP
+.TP
+\fB\-p\fR ##
+port number to send to or listen at (default 5001)
+.HP
+\fB\-s\fR      \fB\-t\fR: source a pattern to network
+.IP
+\fB\-r\fR: sink (discard) all data from network
+.TP
+\fB\-A\fR ##
+align the start of buffers to this modulus (default 16384)
+.TP
+\fB\-O\fR ##
+start buffers at this offset from the modulus (default 0)
+.TP
+\fB\-v\fR
+verbose: print more statistics
+.TP
+\fB\-d\fR
+set SO_DEBUG socket option
+.TP
+\fB\-b\fR ##
+set socket buffer size (if supported)
+.TP
+\fB\-f\fR X
+format for rate: k,K = kilo{bit,byte}; m,M = mega; g,G = giga
+.SS "Options specific to -t:"
+.TP
+\fB\-n\fR ##
+number of source bufs written to network (default 2048)
+.TP
+\fB\-D\fR
+don't buffer TCP writes (sets TCP_NODELAY socket option)
+.TP
+\fB\-w\fR ##
+number of microseconds to wait between each write
+.SS "Options specific to -r:"
+.TP
+\fB\-B\fR
+for \fB\-s\fR, only output full blocks as specified by \fB\-l\fR (for TAR)
+.TP
+\fB\-T\fR
+"touch": access each byte as it's read
+.TP
+\fB\-I\fR if
+Specify the network interface (e.g. eth0) to use

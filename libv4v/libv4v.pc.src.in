@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libv4v
+Description: libv4v
+Requires: 
+Version: %VERSION%
+Libs: -L${libdir} -lv4v -ldl
+Cflags: -I${includedir}
+

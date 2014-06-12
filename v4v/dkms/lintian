@@ -1,0 +1,4 @@
+v4v-dkms: extended-description-is-empty
+v4v-dkms: changelog-file-missing-in-native-package
+v4v-dkms: copyright-file-is-symlink
+v4v-dkms: copyright-without-copyright-notice

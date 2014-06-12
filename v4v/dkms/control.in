@@ -1,0 +1,9 @@
+Package: v4v-dkms
+Version: %V4V_VERSION%
+Architecture: all
+Maintainer:  Citrix Systems <customerservice@citrix.com>
+Depends: dkms (>= 1.95), linux-image-virtual
+Section: misc
+Priority: optional
+Description: v4v driver in DKMS format.
+Installed-Size: 1000
