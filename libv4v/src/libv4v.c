@@ -1,8 +1,6 @@
 /*
  * libv4v.c:
  *
- * Copyright (c) 2010 James McKenzie <20@madingley.org>,
- * All rights reserved.
  *
  */
 
