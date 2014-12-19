@@ -43,6 +43,7 @@ extern "C" {
 /*get struct tm defined*/
 #include <@I2_TM_H@>
 
+#define V4V_EXCLUDE_INTERNAL
 #include <xen/v4v.h>
 #include <sys/socket.h>
 
