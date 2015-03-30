@@ -31,4 +31,4 @@ typedef enum _BounceType
     eManyWrites
 } BounceType;
 
-extern int FileTransfer(int domid, int listenPort, char *fileName, char *operation);
+extern int FileTransfer(int domid, int listenPort, char *fileName, char *operation, int connect);

@@ -61,7 +61,7 @@ int WaitForIncomingConnection(int listenPort, int domid)
     svrSocket = v4v_socket (SOCK_STREAM);
     if (svrSocket < 0)
     {
-	printf("domid %d: socket(PF_XENV4V,SOCK_STREAM,0) failed: %m\n", domid);
+	printf("domid %d: socket(PF_XENV4V,SOCK_STREAM,0) failed\n", domid);
     }
     else
     {
@@ -98,6 +98,29 @@ int WaitForIncomingConnection(int listenPort, int domid)
     return returnValue;
 }
 
+int ConnectionToRemote(int remotePort, int domid)
+{
+    int returnValue = 0;
+    int connSocket = 0;
+    v4v_addr_t addr;
+    printf("%s begin.\n", __FUNCTION__);
+
+    connSocket = v4v_socket (SOCK_STREAM);
+    if (connSocket < 0)
+    {
+	printf("domid %d: socket(PF_XENV4V,SOCK_STREAM,0) failed\n", domid);
+        return 0;
+    }
+
+    addr.domain = domid;
+    addr.port = remotePort;
+
+    returnValue = v4v_connect(connSocket, &addr);
+
+    printf("%s end. return %d socket: %d\n", __FUNCTION__, returnValue, connSocket);
+    return connSocket;
+}
+
 void CloseConnection(int connection)
 {
     close(connection);
@@ -131,7 +154,7 @@ void ReceiveFile(int connection, char *fileName)
 	    
 	    if (bytesRead <= 0)
 	    {
-		printf("read from v4v returned %d, so exiting\n", bytesRead);
+		printf("read from v4v returned %d, so exiting\n", (int)bytesRead);
 		keepGoing = 0;
 	    }
 	    else
@@ -141,7 +164,7 @@ void ReceiveFile(int connection, char *fileName)
 		totalBytesToFile += bytesWritten;
 		fflush(fileDescriptor);
 		printf("read from v4v returned %d bytes. totalBytesReceived %d, totalBytesToFile %d.\n", 
-		       bytesRead, 
+		       (int)bytesRead, 
 		       totalBytesReceived,
 		       totalBytesToFile);
 	    }
@@ -193,7 +216,7 @@ void SendFile(int connection, char *fileName)
             bytesRead = fread(writeBuffer, 1, currentSize, fileDescriptor);  
 	    if (bytesRead <= 0)
 	    {
-		printf("read from file returned %d, so exiting\n", bytesRead);
+		printf("read from file returned %d, so exiting\n", (int)bytesRead);
 		keepGoing = 0;
 	    }
 	    else
@@ -203,7 +226,7 @@ void SendFile(int connection, char *fileName)
 		totalBytesToSocket += bytesWritten;
 		fflush(fileDescriptor);
 		printf("read from file returned %d bytes. totalBytesRead %d, totalBytesToSocket %d.\n", 
-		       bytesRead, 
+		       (int)bytesRead, 
 		       totalBytesRead,
 		       totalBytesToSocket);
 	    }
@@ -258,7 +281,7 @@ void BounceData(int context, BounceType bounceType)
 
     if (readBuffer != NULL)
     {
-	printf("sanity things. sizeof(unsigned int) %d, sizeof(int) %d\n", sizeof(unsigned int), sizeof(int));
+	printf("sanity things. sizeof(unsigned int) %d, sizeof(int) %d\n", (int)sizeof(unsigned int), (int)sizeof(int));
 	while (keepGoing)
 	{
 	    
@@ -266,7 +289,7 @@ void BounceData(int context, BounceType bounceType)
 	    bytesRead = read(context, &packetSize, sizeof(unsigned int));
 	    if (bytesRead <= 0)
 	    {
-		printf("reading packet size returned %d, so exiting\n", bytesRead);
+		printf("reading packet size returned %d, so exiting\n", (int)bytesRead);
 		keepGoing = 0;
 		break;
 	    }
@@ -276,7 +299,7 @@ void BounceData(int context, BounceType bounceType)
 	    bytesRead = read(context, &sequenceNumber, sizeof(unsigned int));
 	    if (bytesRead <= 0)
 	    {
-		printf("reading sequence number  returned %d, so exiting\n", bytesRead);
+		printf("reading sequence number  returned %d, so exiting\n", (int)bytesRead);
 		keepGoing = 0;
 		break;
 	    }
@@ -290,7 +313,7 @@ void BounceData(int context, BounceType bounceType)
 	    
 	    if (bytesRead <= 0)
 	    {
-		printf("reading data returned %d, so exiting\n", bytesRead);
+		printf("reading data returned %d, so exiting\n", (int)bytesRead);
 		keepGoing = 0;
 		break;
 	    }
@@ -315,7 +338,7 @@ void BounceData(int context, BounceType bounceType)
 		writeVec[2].iov_base = readBuffer;
 		writeVec[2].iov_len = bytesRead;
 		bytesWritten = writev(context, writeVec, 3);
-		//printf("writev returned %d\n", bytesWritten);
+		//printf("writev returned %d\n", (int)bytesWritten);
 	    }
 	    else if (bounceType == eManyWrites)
 	    {
@@ -323,7 +346,7 @@ void BounceData(int context, BounceType bounceType)
 		bytesWritten = write(context, &packetSize, sizeof(unsigned int));
 		if (bytesWritten <= 0)
 		{
-		    printf("writing packetSize returned %d, so exiting\n", bytesWritten);
+		    printf("writing packetSize returned %d, so exiting\n", (int)bytesWritten);
 		    keepGoing = 0;
 		    break;
 		}
@@ -332,7 +355,7 @@ void BounceData(int context, BounceType bounceType)
 		bytesWritten = write(context, &sequenceNumber, sizeof(unsigned int));
 		if (bytesWritten <= 0)
 		{
-		    printf("writing sequenceNumber returned %d, so exiting\n", bytesWritten);
+		    printf("writing sequenceNumber returned %d, so exiting\n", (int)bytesWritten);
 		    keepGoing = 0;
 		    break;
 		}
@@ -341,7 +364,7 @@ void BounceData(int context, BounceType bounceType)
 		bytesWritten = write(context, readBuffer, bytesRead);
 		if (bytesWritten <= 0)
 		{
-		    printf("writing packetData returned %d, so exiting\n", bytesWritten);
+		    printf("writing packetData returned %d, so exiting\n", (int)bytesWritten);
 		    keepGoing = 0;
 		    break;
 		}
@@ -351,7 +374,7 @@ void BounceData(int context, BounceType bounceType)
 		{
 		    printf("%s problem doing sequence of small writes. Wrote %d, expected %d.\n",
 			   __FUNCTION__,
-			   bytesWrittenThisPacket,
+			   (int)bytesWrittenThisPacket,
 			   packetSize);
 		    keepGoing = 0;
 		    break;
@@ -387,7 +410,7 @@ void BounceData(int context, BounceType bounceType)
 
 	    if (bytesWritten <= 0)
 	    {
-		printf("writing data returned %d, so exiting\n", bytesWritten);
+		printf("writing data returned %d, so exiting\n", (int)bytesWritten);
 		keepGoing = 0;
 		break;
 	    }
@@ -398,7 +421,7 @@ void BounceData(int context, BounceType bounceType)
 		   __FUNCTION__,
 		   sequenceNumber,
 		   packetSize,
-		   bytesWritten,
+		   (int)bytesWritten,
 		   totalBytesSent);
 	}
 
@@ -439,7 +462,7 @@ BounceType WorkOutBounceType(char *operation)
     return returnValue;
 }
 
-int FileTransfer(int domid, int listenPort, char *fileName, char *operation)
+int FileTransfer(int domid, int port, char *fileName, char *operation, int connect)
 {
     int returnValue = false;
     int connection = 0;
@@ -449,7 +472,10 @@ int FileTransfer(int domid, int listenPort, char *fileName, char *operation)
 
     bounceType = WorkOutBounceType(operation);
     //Let's start listening for our socket.
-    connection = WaitForIncomingConnection(listenPort, domid);
+    if (!connect)
+        connection = WaitForIncomingConnection(port, domid);
+    else
+        connection = ConnectionToRemote(port, domid);
 
     if (connection > 0)
     {
