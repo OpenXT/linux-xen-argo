@@ -23,7 +23,7 @@ LDFLAGS=
 
 SOURCES=main.c fileTransfer.c
 
-LIBS=lib/libv4v.a -ldl
+LIBS=-lv4v -ldl
 
 OBJECTS=$(SOURCES:.c=.o)
 

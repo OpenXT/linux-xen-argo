@@ -26,8 +26,9 @@
 int main(int argc, char **argv)
 {
     int domid = 0;
-    int listenPort = 0;
+    int port = 0;
     int parseOk = 0;
+    int connect = 0;
     char *fileName = NULL;
     char *operation = NULL;
   
@@ -49,8 +50,8 @@ int main(int argc, char **argv)
 	    parseOk = 0;
 	    if (!strcmp("-port", argv[3]))
 	    {
-		listenPort = atoi(argv[4]);
-		printf("Will listen on port %d\n", listenPort);
+		port = atoi(argv[4]);
+		printf("Will listen/connect on port %d\n", port);
 		parseOk = 1;
 	    }
 	}
@@ -82,21 +83,29 @@ int main(int argc, char **argv)
                 operation = &argv[7][1]; //Make sure to strip off the leading -
 		parseOk = 1;
 	    }
-	}
-	
+        }
+        if (parseOk)
+        {
+            //This one is optional
+	    if (argc > NUM_ARGS)
+            {
+	        if (!strcmp("-connect", argv[8]))
+                    connect = 1;
+            }
+        }
     }
 
     //See if everything parsed ok.
     if (!parseOk)
     {
-	printf("usage: %s -domid <domid> -port <portNum> -file <fileToTransfer> -send/receive/bounce_with_writev/bounce_with_one_write/bounce_with_many_writes\n", argv[0]);
+	printf("usage: %s -domid <domid> -port <portNum> -file <fileToTransfer> -send/receive/bounce_with_writev/bounce_with_one_write/bounce_with_many_writes [-connect]\n", argv[0]);
     }
     else
     {
-	printf("Listening on port %d, and will %s the file %s\n", listenPort, operation, fileName);
+	printf("Listening/connecting on port %d, and will %s the file %s\n", port, operation, fileName);
 
 	//Let's do it.
-	FileTransfer(domid, listenPort, fileName, operation);
+	FileTransfer(domid, port, fileName, operation, connect);
     }
   
   return 0;
