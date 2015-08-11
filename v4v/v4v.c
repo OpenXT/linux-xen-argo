@@ -2856,7 +2856,7 @@ allocate_fd_with_private (void *private)
   struct inode *ind;
 #endif
 
-  fd = get_unused_fd ();
+  fd = get_unused_fd_flags(O_CLOEXEC);
   if (fd < 0)
     return fd;
 
