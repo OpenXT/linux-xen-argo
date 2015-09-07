@@ -3048,7 +3048,15 @@ v4v_accept (struct v4v_private *p, struct v4v_addr *peer, int nonblock)
       printk (KERN_ERR "v4v_accept priv %p => %p\n", p, a);
 #endif
 
-	  v4v_kfree(r);
+      v4v_kfree(r);
+
+      /*
+       * A new fd with a struct file having its struct file_operations in this
+       * module is to be returned. The refcnt need to reflect that, so bump it.
+       * Since that fd will eventualy be closed, the .release() callback will
+       * decrement the refcnt.
+       */
+      try_module_get(THIS_MODULE);
 
       return fd;
 
