@@ -618,7 +618,7 @@ init (void)
   static int ready;
 
   if (ready)
-    return 0;
+    return;
 
   FD_ZERO (&v4v_fds);
   FD_ZERO (&v4v_afs);
@@ -650,6 +650,4 @@ init (void)
   FIND (shutdown);
 
   ready++;
-
-  return 0;
 }

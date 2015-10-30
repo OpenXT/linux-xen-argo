@@ -112,7 +112,7 @@ struct addrinfo hints, *res, *res0;
 struct ipv6_mreq mreq6;
 struct ip_mreq mreq;
 
-size_t fromlen;
+socklen_t fromlen;
 int fd;				/* fd of network socket */
 
 int buflen = 8 * 1024;		/* length of buffer */
@@ -359,7 +359,7 @@ main(int argc, char **argv)
 	if ((buf = (char *)malloc(buflen+bufalign)) == (char *)NULL)
 		err("malloc");
 	if (bufalign != 0)
-		buf +=(bufalign - ((int)buf % bufalign) + bufoffset) % bufalign;
+		buf +=(bufalign - ((uintptr_t)buf % bufalign) + bufoffset) % bufalign;
 
 	if (trans) {
 		fprintf(stderr, "ttcp-t: buflen=%d, nbuf=%d, align=%d/%d, port=%s",
@@ -488,7 +488,7 @@ main(int argc, char **argv)
 		{ 
 		  struct sockaddr_storage peer;
 		  char addr_buf[NI_MAXHOST];
-		  size_t peerlen = sizeof(peer);
+		  socklen_t peerlen = sizeof(peer);
 		  
 		  if (getpeername(fd, (struct sockaddr*) &peer, &peerlen) < 0)
 			err("getpeername");
@@ -736,7 +736,7 @@ prusage(register struct rusage *r0, register struct rusage *r1,
 
 		case 'W':
 			i = r1->ru_nswap - r0->ru_nswap;
-			sprintf(outp, "%ld", i);
+			sprintf(outp, "%d", i);
 			END(outp);
 			break;
 
@@ -839,7 +839,7 @@ int
 Nread(int fd, void *buf, int count)
 {
 	struct sockaddr_in from;
-	size_t len = sizeof(from);
+	socklen_t len = sizeof(from);
 	register int cnt;
 	if (udp) {
 		cnt = recvfrom(fd, buf, count, 0, (struct sockaddr *)&from, &len);
