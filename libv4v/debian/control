@@ -1,0 +1,10 @@
+Source: libv4v
+Section: misc
+Priority: optional
+Maintainer: OpenXT Community
+Build-Depends: autoconf,automake,libtool
+
+Package: libv4v
+Architecture: i386 amd64
+Description: libv4v
+ LibV4V
