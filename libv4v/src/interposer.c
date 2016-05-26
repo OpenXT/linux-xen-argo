@@ -255,7 +255,9 @@ INTERPOSE (bind, int, int sockfd, const struct sockaddr * addr,
 INTERPOSE (connect, int, int sockfd, const struct sockaddr * addr,
            socklen_t addrlen)
 {
-  v4v_addr_t peer;
+  v4v_addr_t peer, me;
+  char *val;
+  int addend, ret;
 
   CHECK_INTERPOSE (connect);
 
@@ -264,6 +266,18 @@ INTERPOSE (connect, int, int sockfd, const struct sockaddr * addr,
 
   if (v4v_map_sa_to_v4va (&peer, addr, addrlen))
     return -EINVAL;
+
+  val = getenv ("V4V_CLIENT_PORT_ADDEND");
+  if (val != NULL) {
+    addend = strtol(val, NULL, 10);
+    me.domain = V4V_DOMID_ANY;
+    me.port = peer.port + addend;
+    DEBUG_PRINTF ("BINDING CLIENT TO port %d\n", (int) me.port);
+    DEBUG_PRINTF ("  AND SET %d AS THE PARTNER\n", (int) peer.domain);
+    ret = v4v_bind(sockfd, &me, peer.domain);
+    if (ret)
+      return ret;
+  }
 
   DEBUG_PRINTF ("CONNECTING TO %d:%d\n", (int) peer.domain, (int) peer.port);
 
