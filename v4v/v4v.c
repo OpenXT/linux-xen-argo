@@ -728,8 +728,14 @@ refresh_pfn_list (struct ring *r)
 static void
 allocate_pfn_list (struct ring *r)
 {
-	int n = (r->ring->len + PAGE_SIZE - 1) >> PAGE_SHIFT;
-	int len = sizeof (v4v_pfn_list_t) + (sizeof (v4v_pfn_t) * n);
+    /*
+     * Requires that r->ring->len is less than
+     * ( (0xffffffff - sizeof (v4v_pfn_list_t) ) / sizeof (v4v_pfn_t)
+     * to avoid integer overflow.
+     * See V4V_MAXIMUM_RING_SIZE.
+     */
+	uint32_t n = (r->ring->len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	size_t len = sizeof (v4v_pfn_list_t) + (sizeof (v4v_pfn_t) * n);
 
 	r->pfn_list = v4v_kmalloc (len, GFP_KERNEL);
 	if (!r->pfn_list)
@@ -743,15 +749,20 @@ allocate_pfn_list (struct ring *r)
 	refresh_pfn_list(r);
 }
 
+static const uint32_t V4V_MAXIMUM_RING_SIZE =
+      ((0xffffffffU - sizeof (v4v_pfn_list_t) ) / sizeof (v4v_pfn_t)) -
+      sizeof (v4v_ring_t);
+
 static int
 allocate_ring (struct ring *r, int ring_len)
 {
-  int len = ring_len + sizeof (v4v_ring_t);
+  int len;
   int ret = 0;
 
   do
     {
-      if (ring_len != V4V_ROUNDUP (ring_len))
+      if ((ring_len > V4V_MAXIMUM_RING_SIZE) ||
+          (ring_len != V4V_ROUNDUP (ring_len)))
         {
 #ifdef V4V_DEBUG
           printk (KERN_ERR "ring_len=%d\n", ring_len);
@@ -765,6 +776,7 @@ allocate_ring (struct ring *r, int ring_len)
       r->pfn_list = NULL;
       r->order = 0;
 
+      len = ring_len + sizeof (v4v_ring_t);
       r->order = get_order (len);
 
       r->ring = vmalloc(len);
