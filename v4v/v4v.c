@@ -1410,22 +1410,22 @@ v4v_notify (void)
 }
 
 /***********************  viptables ********************/
-static void
+static int
 v4v_viptables_add (struct v4v_private *p, struct v4v_viptables_rule* rule, int position)
 {
-  H_v4v_viptables_add (rule, position);
+  return H_v4v_viptables_add (rule, position);
 }
 
-static void
+static int
 v4v_viptables_del (struct v4v_private *p, struct v4v_viptables_rule* rule, int position)
 {
-  H_v4v_viptables_del (rule, position);
+  return H_v4v_viptables_del (rule, position);
 }
 
-static void
+static int
 v4v_viptables_list (struct v4v_private *p, struct v4v_viptables_list *rules_list)
 {
-  H_v4v_viptables_list (rules_list);
+  return H_v4v_viptables_list (rules_list);
 }
 
 
@@ -3539,31 +3539,49 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
       }
       break;
     case V4VIOCVIPTABLESADD:
-      if (!access_ok (VERIFY_READ, arg, sizeof (struct v4v_viptables_rule_pos)))
-	return -EFAULT;
       {
-	struct v4v_viptables_rule_pos *rule =
-	  (struct v4v_viptables_rule_pos *) arg;
-	v4v_viptables_add (p, rule->rule, rule->position);
-	rc = 0;
+        struct v4v_viptables_rule_pos rule_pos;
+        struct v4v_viptables_rule rule;
+        if (copy_from_user (&rule_pos, (void __user *)arg,
+                            sizeof(struct v4v_viptables_rule_pos)))
+          return -EFAULT;
+        if (copy_from_user (&rule, rule_pos.rule, sizeof(struct v4v_viptables_rule)))
+          return -EFAULT;
+        rc = v4v_viptables_add (p, &rule, rule_pos.position);
       }
       break;
     case V4VIOCVIPTABLESDEL:
-      if (!access_ok (VERIFY_READ, arg, sizeof (struct v4v_viptables_rule_pos)))
-	return -EFAULT;
       {
-	struct v4v_viptables_rule_pos *rule =
-	  (struct v4v_viptables_rule_pos *) arg;
-	v4v_viptables_del (p, rule->rule, rule->position);
-	rc = 0;
+        struct v4v_viptables_rule_pos rule_pos;
+        struct v4v_viptables_rule rule;
+        if (copy_from_user (&rule_pos, (void __user *)arg,
+                            sizeof(struct v4v_viptables_rule_pos)))
+          return -EFAULT;
+        if (rule_pos.rule)
+        {
+          if (copy_from_user (&rule, rule_pos.rule, sizeof(struct v4v_viptables_rule)))
+            return -EFAULT;
+          rc = v4v_viptables_del (p, &rule, rule_pos.position);
+        }
+        else
+          rc = v4v_viptables_del (p, NULL, rule_pos.position);
       }
       break;
     case V4VIOCVIPTABLESLIST:
       {
-          struct v4v_viptables_list *rules_list =
-              (struct v4v_viptables_list *) arg;
-          v4v_viptables_list(p, rules_list);
-          rc = 0;
+        struct v4v_viptables_list rules_list;
+        if (!access_ok (VERIFY_WRITE, (void __user *)arg,
+                        sizeof (struct v4v_viptables_list)))
+          return -EFAULT;
+        if (get_user(rules_list.nb_rules,
+                     &((struct v4v_viptables_list *)arg)->nb_rules))
+          return -EFAULT;
+        rc = v4v_viptables_list(p, &rules_list);
+        if (rc)
+          return rc;
+        if (copy_to_user ((void __user *)arg, &rules_list,
+                          sizeof(struct v4v_viptables_list)))
+          return -EFAULT;
       }
       break;
     default:
