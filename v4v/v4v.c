@@ -2725,10 +2725,11 @@ v4v_connect (struct v4v_private *p, v4v_addr_t * peer, int nonblock)
           return -EINVAL;
         }
     }
+
   if (p->ptype != V4V_PTYPE_STREAM)
-    {
-      return -EINVAL;
-    }
+    return -EINVAL;
+  if (!peer)
+    return -EFAULT;
 
   DEBUG_APPLE;
 
@@ -3097,8 +3098,6 @@ v4v_sendto (struct v4v_private * p, const void *buf, size_t len, int flags,
 
   if (!access_ok (VERIFY_READ, buf, len))
     return -EFAULT;
-  if (!access_ok (VERIFY_READ, addr, sizeof(v4v_addr_t)))
-    return -EFAULT;
 
 #ifdef V4V_DEBUG
   printk(KERN_ERR "v4v_sendto buf:%p len:%ld nonblock:%d\n", buf, len, nonblock);
@@ -3186,8 +3185,6 @@ v4v_recvfrom (struct v4v_private * p, void *buf, size_t len, int flags,
 #endif
 
   if (!access_ok (VERIFY_WRITE, buf, len))
-    return -EFAULT;
-  if ((addr) && (!access_ok (VERIFY_WRITE, addr, sizeof (v4v_addr_t))))
     return -EFAULT;
 
   if (flags & MSG_DONTWAIT)
@@ -3446,43 +3443,74 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
     {
     case V4VIOCSETRINGSIZE:
       DEBUG_APPLE;
-      if (!access_ok (VERIFY_READ, arg, sizeof (uint32_t)))
-        return -EFAULT;
-      rc = v4v_set_ring_size (p, *(uint32_t *) arg);
+      {
+        uint32_t ring_size;
+        if (get_user (ring_size, (uint32_t __user *)arg))
+          return -EFAULT;
+        rc = v4v_set_ring_size (p, ring_size);
+      }
       break;
     case V4VIOCBIND:
       DEBUG_APPLE;
-      if (!access_ok (VERIFY_READ, arg, sizeof (struct v4v_ring_id)))
-        return -EFAULT;
-
-      DEBUG_APPLE;
-      rc = v4v_bind (p, (struct v4v_ring_id *) arg);
+      {
+        struct v4v_ring_id ring_id;
+        if (copy_from_user (&ring_id, (void __user *)arg,
+                            sizeof(struct v4v_ring_id)))
+          return -EFAULT;
+        DEBUG_APPLE;
+        rc = v4v_bind (p, &ring_id);
+      }
       break;
     case V4VIOCGETSOCKNAME:
-      DEBUG_APPLE;
       if (!access_ok (VERIFY_WRITE, arg, sizeof (struct v4v_ring_id)))
-        return -EFAULT;
-      rc = v4v_get_sock_name (p, (struct v4v_ring_id *) arg);
+         return -EFAULT;
+      {
+        struct v4v_ring_id ring_id;
+        v4v_get_sock_name (p, &ring_id);
+        if (copy_to_user ((void __user *)arg, &ring_id,
+                          sizeof(struct v4v_ring_id)))
+          return -EFAULT;
+      }
+      rc = 0;
       break;
     case V4VIOCGETSOCKTYPE:
       DEBUG_APPLE;
       if (!access_ok (VERIFY_WRITE, arg, sizeof (int)))
         return -EFAULT;
-      rc = v4v_get_sock_type (p, (int *) arg);
+      {
+        int sock_type;
+        v4v_get_sock_type (p, &sock_type);
+        if (put_user (sock_type, (int __user *)arg))
+          return -EFAULT;
+      }
+      rc = 0;
       break;
     case V4VIOCGETPEERNAME:
       DEBUG_APPLE;
       if (!access_ok (VERIFY_WRITE, arg, sizeof (v4v_addr_t)))
         return -EFAULT;
-      rc = v4v_get_peer_name (p, (v4v_addr_t *) arg);
+      {
+        v4v_addr_t addr;
+        rc = v4v_get_peer_name (p, &addr);
+        if (rc)
+          return rc;
+        if (copy_to_user ((void __user *)arg, &addr, sizeof(v4v_addr_t)))
+          return -EFAULT;
+      }
       break;
     case V4VIOCCONNECT:
       DEBUG_APPLE;
-      if (!access_ok (VERIFY_READ, arg, sizeof (v4v_addr_t)))
-        return -EFAULT;
-      //For for the lazy do a bind if it wasn't done
+      {
+        v4v_addr_t connect_addr;
+        if (arg)
+        {
+          if (copy_from_user (&connect_addr, (void __user *)arg,
+                              sizeof(v4v_addr_t)))
+            return -EFAULT;
+        }
 
-      if (p->state == V4V_STATE_IDLE)
+        //For for the lazy do a bind if it wasn't done
+        if (p->state == V4V_STATE_IDLE)
         {
           struct v4v_ring_id id;
           memset (&id, 0, sizeof (id));
@@ -3493,7 +3521,11 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
           if (rc)
             break;
         }
-      rc = v4v_connect (p, (v4v_addr_t *) arg, nonblock);
+        if (arg)
+            rc = v4v_connect (p, &connect_addr, nonblock);
+        else
+            rc = v4v_connect (p, NULL, nonblock);
+      }
       break;
     case V4VIOCGETCONNECTERR:
       {
@@ -3503,10 +3535,13 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
         DEBUG_APPLE;
 
         v4v_spin_lock_irqsave (&p->pending_recv_lock, flags);
-        *(int *) arg = p->pending_error;
-        p->pending_error = 0;
+        if (put_user (p->pending_error, (int __user *)arg))
+          rc = -EFAULT;
+        else {
+          p->pending_error = 0;
+          rc = 0;
+        }
         v4v_spin_unlock_irqrestore (&p->pending_recv_lock, flags);
-        rc = 0;
         DEBUG_APPLE;
       }
       break;
@@ -3518,24 +3553,51 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
       DEBUG_APPLE;
       if (!access_ok (VERIFY_WRITE, arg, sizeof (v4v_addr_t)))
         return -EFAULT;
-      rc = v4v_accept (p, (v4v_addr_t *) arg, nonblock);
+      {
+        v4v_addr_t addr;
+        rc = v4v_accept (p, &addr, nonblock);
+        if (rc < 0)
+          return rc;
+        if (copy_to_user ((void __user *)arg, &addr, sizeof(v4v_addr_t)))
+          return -EFAULT;
+      }
       break;
     case V4VIOCSEND:
-      if (!access_ok (VERIFY_READ, arg, sizeof (struct v4v_dev)))
-        return -EFAULT;
       {
-        struct v4v_dev a = *(struct v4v_dev *) arg;
-        DEBUG_APPLE;
-        rc = v4v_sendto (p, a.buf, a.len, a.flags, a.addr, nonblock);
+        struct v4v_dev a;
+        v4v_addr_t addr;
+        if (copy_from_user (&a, (void __user *)arg, sizeof(struct v4v_dev)))
+          return -EFAULT;
+
+        if (a.addr) {
+          if (copy_from_user (&addr, (void __user *)a.addr, sizeof(v4v_addr_t)))
+            return -EFAULT;
+          DEBUG_APPLE;
+          rc = v4v_sendto (p, a.buf, a.len, a.flags, &addr, nonblock);
+        }
+        else {
+          DEBUG_APPLE;
+          rc = v4v_sendto (p, a.buf, a.len, a.flags, NULL, nonblock);
+        }
       }
       break;
     case V4VIOCRECV:
       DEBUG_APPLE;
-      if (!access_ok (VERIFY_READ, arg, sizeof (struct v4v_dev)))
-        return -EFAULT;
       {
-        struct v4v_dev a = *(struct v4v_dev *) arg;
-        rc = v4v_recvfrom (p, a.buf, a.len, a.flags, a.addr, nonblock);
+        struct v4v_dev a;
+        v4v_addr_t addr;
+        if (copy_from_user (&a, (void __user *)arg, sizeof(struct v4v_dev)))
+          return -EFAULT;
+        if (a.addr) {
+            if (copy_from_user (&addr, a.addr, sizeof(v4v_addr_t)))
+              return -EFAULT;
+            rc = v4v_recvfrom (p, a.buf, a.len, a.flags, &addr, nonblock);
+            if (rc < 0)
+              return rc;
+            if (copy_to_user (a.addr, &addr, sizeof(v4v_addr_t)))
+              return -EFAULT;
+        } else
+            rc = v4v_recvfrom (p, a.buf, a.len, a.flags, NULL, nonblock);
       }
       break;
     case V4VIOCVIPTABLESADD:
