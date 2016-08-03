@@ -677,6 +677,8 @@ v4v_random_port (void)
   return port;
 }
 
+static const uint32_t V4V_PORTS_EXHAUSTED = 0xffffffffU;
+
 /*caller needs to hold lock*/
 static uint32_t
 v4v_find_spare_port_number (void)
@@ -870,6 +872,11 @@ new_ring (struct v4v_private *sponsor, struct v4v_ring_id *pid)
       if (!id.addr.port)
         {
           id.addr.port = v4v_find_spare_port_number ();
+          if (id.addr.port == V4V_PORTS_EXHAUSTED)
+          {
+            ret = -ENOSPC;
+            break;
+          }
         }
       else if (v4v_id_in_use (&id))
         {
