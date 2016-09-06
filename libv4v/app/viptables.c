@@ -55,6 +55,7 @@ int main (int argc, char** argv)
 {
   int c;
   int fd;
+  int rc = -1;
 
   v4v_viptables_rule_t rule;
   int position = -1;
@@ -158,24 +159,24 @@ int main (int argc, char** argv)
     case APPEND:
       if (rule.accept == -1)
 	usage(1);
-      v4v_viptables_add(fd, &rule, -1);
+      rc = v4v_viptables_add(fd, &rule, -1);
       break;
     case INSERT:
       if (rule.accept == -1)
 	usage(1);
-      v4v_viptables_add(fd, &rule, position);
+      rc = v4v_viptables_add(fd, &rule, position);
       break;
     case LIST:
-      v4v_viptables_list(fd);
+      rc = v4v_viptables_list(fd);
       break;
     case DELETE:
       if (position != -1)
-	v4v_viptables_del(fd, NULL, position);
+        rc = v4v_viptables_del(fd, NULL, position);
       else
-	v4v_viptables_del(fd, &rule, -1);
+        rc = v4v_viptables_del(fd, &rule, -1);
       break;
     case FLUSH:
-      v4v_viptables_flush(fd);
+      rc = v4v_viptables_flush(fd);
       break;
     default:
       usage(1);
@@ -183,5 +184,5 @@ int main (int argc, char** argv)
 
   v4v_close(fd);
 
-  return 0;
+  return rc;
 }
