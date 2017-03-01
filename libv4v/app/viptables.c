@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <string.h>
 #include "libv4v.h"
 
 enum action_e
