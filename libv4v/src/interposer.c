@@ -18,12 +18,9 @@
 
 #include "project.h"
 
-#define __USE_GNU
-#include <dlfcn.h>
-
 #define INTERPOSE(n,rt,p...)  \
 		static rt (*orig_ ## n) (p); \
-  		INTERNAL rt n (p)
+		INTERNAL rt n (p)
 
 #define CHECK_INTERPOSE(n) \
 		do { \
@@ -47,21 +44,7 @@ static fd_set v4v_fds;
 static fd_set v4v_checked;
 static fd_set v4v_afs;
 
-#if 0
-static struct
-{
-  dev_t st_dev;
-  ino_t st_ino;
-} v4v_dgram_inode, v4v_stream_inode;
-#endif
-
 static int force_xen;
-
-EXTERNAL
-v4v_convert_inet_to_xenv4v (int arg)
-{
-  force_xen = arg;
-}
 
 static void inline
 do_register (fd_set * p, int fd)

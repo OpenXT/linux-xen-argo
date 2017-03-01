@@ -16,10 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-noinst_HEADERS = \
-	project.h \
-	prototypes.h \
-	ext_prototypes.h
+noinst_HEADERS = project.h
 
 include_HEADERS = libv4v.h
 

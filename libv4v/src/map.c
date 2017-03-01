@@ -32,7 +32,7 @@ unmap_port (uint32_t v4v_port)
 }
 
 
-INTERNAL void
+void
 v4v_map_v4va_to_sin (struct sockaddr *addr, socklen_t * addrlen,
                      v4v_addr_t * peer)
 {
@@ -61,7 +61,7 @@ v4v_map_v4va_to_sin (struct sockaddr *addr, socklen_t * addrlen,
 }
 
 
-INTERNAL int
+int
 v4v_map_sin_to_v4va (v4v_addr_t * peer, const struct sockaddr *addr,
                      int addrlen)
 {
@@ -87,7 +87,7 @@ v4v_map_sin_to_v4va (v4v_addr_t * peer, const struct sockaddr *addr,
   return 0;
 }
 
-INTERNAL void
+void
 v4v_map_v4va_to_sxenv4v (struct sockaddr *addr, socklen_t * addrlen,
                          v4v_addr_t * peer)
 {
@@ -107,7 +107,7 @@ v4v_map_v4va_to_sxenv4v (struct sockaddr *addr, socklen_t * addrlen,
     *addrlen = sizeof (sxenv4v);
 }
 
-INTERNAL int
+int
 v4v_map_sxenv4v_to_v4va (v4v_addr_t * peer,
                          const struct sockaddr *addr, int addrlen)
 {
@@ -129,7 +129,7 @@ v4v_map_sxenv4v_to_v4va (v4v_addr_t * peer,
   return 0;
 }
 
-INTERNAL int
+int
 v4v_map_sa_to_v4va (v4v_addr_t * peer,
                     const struct sockaddr *addr, int addrlen)
 {
