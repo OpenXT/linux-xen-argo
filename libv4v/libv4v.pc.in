@@ -6,7 +6,7 @@ includedir=@includedir@
 Name: libv4v
 Description: libv4v
 Requires: 
-Version: %VERSION%
-Libs: -L${libdir} -lv4v -ldl
+Version: @VERSION@
+Libs: -L${libdir} -lv4v @LIBS@
 Cflags: -I${includedir}
 

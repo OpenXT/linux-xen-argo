@@ -1,15 +1,3 @@
-#!/bin/sh
-#
-# libv4v-config.src.in:
-#
-#
-# $Id:$
-#
-# $Log:$
-#
-#
-#
-
 # Copyright (c) 2010 Citrix Systems, Inc.
 
 prefix=@prefix@
@@ -87,5 +75,5 @@ if test "$echo_cflags" = "yes"; then
 	echo $includes
 fi
 if test "$echo_libs" = "yes"; then
-	echo -L@libdir@ -lv4v -ldl
+	echo -L@libdir@ -lv4v @LIBS@
 fi
