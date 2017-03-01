@@ -65,6 +65,9 @@ LT_INIT
 AC_C_INLINE
 AC_C_CONST
 
+# Required libraries.
+AC_SEARCH_LIB([dl], [dlopen])
+
 # Output files.
 AC_CONFIG_FILES([libv4v-config], [chmod +x libv4v-config])
 AC_OUTPUT([Makefile
