@@ -23,7 +23,7 @@ noinst_HEADERS = \
 
 include_HEADERS = libv4v.h
 
-lib_LTLIBRARIES = liv4v_nointerposer.la libv4v.la
+lib_LTLIBRARIES = libv4v_nointerposer.la libv4v.la
 
 libv4v_nointerposer_la_SOURCES = \
 	libv4v.c \

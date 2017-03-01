@@ -16,8 +16,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-
-INCLUDES = -I$(srcdir)/../src 
+AM_CPPFLAGS = -I$(srcdir)/../src
+AM_CFLAGS = -g
 
 bin_PROGRAMS = ttcp-v4v v4v-proxy viptables
 
@@ -29,5 +29,3 @@ v4v_proxy_LDADD = ../src/libv4v.la
 
 viptables_SOURCES = viptables.c
 viptables_LDADD = ../src/libv4v.la
-
-AM_CFLAGS=-g

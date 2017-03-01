@@ -16,11 +16,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-INCLUDES = -I$(srcdir)/../src 
+AM_CPPFLAGS = -I$(srcdir)/../src
+AM_CFLAGS = -g
 
 noinst_PROGRAMS = test
 
 test_SOURCES = test.c
 test_LDADD = ../src/libv4v.la
-
-AM_CFLAGS = -g

@@ -22,9 +22,9 @@
 AC_INIT(libv4v, 1.0)
 AC_PREREQ(2.13)
 AC_CONFIG_HEADERS(src/config.h)
-AC_CONFIG_SRCDIR(src/v4v-head.h)
+AC_CONFIG_SRCDIR(src/libv4v.h)
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
-
+AC_CONFIG_MACRO_DIRS([m4])
 
 #
 # Version management.
@@ -44,7 +44,6 @@ AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-AC_PROG_RANLIB
 AM_PROG_AR
 
 #
@@ -66,7 +65,7 @@ AC_C_INLINE
 AC_C_CONST
 
 # Required libraries.
-AC_SEARCH_LIB([dl], [dlopen])
+AC_CHECK_LIB([dl], [dlopen])
 
 # Output files.
 AC_CONFIG_FILES([libv4v-config], [chmod +x libv4v-config])
