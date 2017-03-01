@@ -16,103 +16,60 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+#
+# Autoconf initialisation.
+#
+AC_INIT(libv4v, 1.0)
 AC_PREREQ(2.13)
-AC_INIT(src/libv4v.c)
+AC_CONFIG_HEADERS(src/config.h)
+AC_CONFIG_SRCDIR(src/v4v-head.h)
+AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
+
+#
+# Version management.
+# +1    : 0     Interface changes breaking retro-compatibility.
+# 0     : +1    Internal changes without lost of retro-compatibility.
+#
+VERSION_MAJOR=1
+VERSION_MINOR=0
+AC_DEFINE_UNQUOTED([VERSION_MAJOR], [$VERSION_MAJOR], [libv4v major version number])
+AC_DEFINE_UNQUOTED([VERSION_MINOR], [$VERSION_MINOR], [libv4v minor version number])
+
+#
+# Standard checks.
+#
 AC_PROG_CC
-AC_SYS_LARGEFILE
-#AM_PROG_CC_C_O
-AC_CONFIG_MACRO_DIR([m4])
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_PROG_RANLIB
+AM_PROG_AR
 
-
-LIBV4V_MAJOR_VERSION=`cat $srcdir/version-major`
-LIBV4V_MINOR_VERSION=`cat $srcdir/version-minor`
-LIBV4V_MICRO_VERSION=`cat $srcdir/version-micro`
-
-
-
-LIBV4V_INTERFACE_VERSION_MIN=$LIBV4V_MINOR_VERSION
-LIBV4V_INTERFACE_VERSION_MAX=$LIBV4V_MINOR_VERSION
-LIBV4V_INTERFACE_REVISION=1
-
-LIBV4V_VERSION=$LIBV4V_MAJOR_VERSION.$LIBV4V_MINOR_VERSION.$LIBV4V_MICRO_VERSION
-
-AC_SUBST(LIBV4V_MAJOR_VERSION)
-AC_SUBST(LIBV4V_MINOR_VERSION)
-AC_SUBST(LIBV4V_MICRO_VERSION)
-AC_SUBST(LIBV4V_VERSION)
-
-AC_SUBST(LIBV4V_INTERFACE_VERSION_MIN)
-AC_SUBST(LIBV4V_INTERFACE_VERSION_MAX)
-AC_SUBST(LIBV4V_INTERFACE_REVISION)
-
-
-LT_RELEASE=$LIBV4V_MAJOR_VERSION.$LIBV4V_MINOR_VERSION
-LT_CURRENT=$LIBV4V_INTERFACE_VERSION_MAX
-LT_REVISION=$LIBV4V_MICRO_VERSION
-LT_AGE=`expr $LIBV4V_INTERFACE_VERSION_MAX - $LIBV4V_INTERFACE_VERSION_MIN`
-
-AC_SUBST(LT_RELEASE)
+#
+# Libtool version system.
+#
+LT_CURRENT=$VERSION_MAJOR
+LT_REVISION=1
+LT_AGE=$VERSION_MAJOR
+LT_RELEASE=$VERSION_MAJOR.$VERSION_MINOR
 AC_SUBST(LT_CURRENT)
 AC_SUBST(LT_REVISION)
 AC_SUBST(LT_AGE)
+AC_SUBST(LT_RELEASE)
 
-VERSION=$LIBV4V_VERSION
-PACKAGE=libv4v
+LT_INIT
 
-AM_INIT_AUTOMAKE($PACKAGE,$VERSION)
-
-AM_PROG_LIBTOOL
-
-AM_CONFIG_HEADER(src/config.h)
-
-AC_CHECK_PROG(MD5SUM,md5sum,md5sum)
-AC_CHECK_PROG(GREP,grep,grep)
-AC_CHECK_PROG(SED,sed,sed)
-AC_PROG_AWK
-
-dnl AC_DEFINE_UNQUOTED(LIBV4V_MAJOR_VERSION, $LIBV4V_MAJOR_VERSION)
-dnl AC_DEFINE_UNQUOTED(LIBV4V_MINOR_VERSION, $LIBV4V_MINOR_VERSION)
-dnl AC_DEFINE_UNQUOTED(LIBV4V_MICRO_VERSION, $LIBV4V_MICRO_VERSION)
-
-AC_CHECK_HEADERS(fcntl.h malloc.h sys/ioctl.h unistd.h)
-AC_CHECK_HEADERS(sys/scsi/impl/uscsi.h scsi/sg.h stdint.h)
-AC_CHECK_HEADERS(sys/int_types.h string.h strings.h)
-AC_CHECK_HEADERS(dirent.h sys/stat.h)
-
+# Compiler capabilities.
 AC_C_INLINE
 AC_C_CONST
-AC_HEADER_TIME
-AC_STRUCT_TM
-AC_CHECK_FUNCS(select strdup strstr)
 
-I2_TM_H=$ac_cv_struct_tm
-
-I2_HAVE_STDINT_H=0
-I2_HAVE_SYS_INT_TYPES_H=0
-if test "$ac_cv_header_sys_int_types_h" = "yes"; then
-	I2_HAVE_SYS_INT_TYPES_H=1
-fi
-if test "$ac_cv_header_stdint_h" = "yes"; then
-	I2_HAVE_STDINT_H=1
-fi
-I2_HAVE_UNISTD_H=0
-if test "$ac_cv_header_unistd_h" = "yes"; then
-	I2_HAVE_UNISTD_H=1
-fi
-
-AC_SUBST(I2_TM_H)
-AC_SUBST(I2_HAVE_STDINT_H)
-AC_SUBST(I2_HAVE_SYS_INT_TYPES_H)
-AC_SUBST(I2_HAVE_UNISTD_H)
-
-
-
-AC_OUTPUT([Makefile 
-	src/Makefile 
-	src/v4v-head.h
-	test/Makefile 
-	app/Makefile
-	libv4v.pc.src
-	libv4v-config.src],[chmod +x libv4v-config.src])
-
+# Output files.
+AC_CONFIG_FILES([libv4v-config], [chmod +x libv4v-config])
+AC_OUTPUT([Makefile
+           src/Makefile
+	   test/Makefile
+	   app/Makefile
+           libv4v.pc
+           ])
