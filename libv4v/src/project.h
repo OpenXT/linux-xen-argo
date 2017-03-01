@@ -58,6 +58,7 @@
 # include <netinet/in.h>
 # include <netinet/tcp.h>
 
+# define V4V_EXCLUDE_INTERNAL
 # include <linux/v4v_dev.h>
 
 # include "libv4v.h"

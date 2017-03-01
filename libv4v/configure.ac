@@ -64,6 +64,11 @@ LT_INIT
 AC_C_INLINE
 AC_C_CONST
 
+# Required headers.
+AC_CHECK_HEADERS([linux/v4v_dev.h], [] , AC_MSG_ERROR([linux/v4v_dev.h is missing.],
+                 [#define V4V_EXCLUDE_INTERNAL
+                  ]))
+
 # Required libraries.
 AC_CHECK_LIB([dl], [dlopen])
 
