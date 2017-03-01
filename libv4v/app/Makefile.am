@@ -1,14 +1,4 @@
 #
-# Makefile.am:
-#
-#
-# $Id:$
-#
-# $Log:$
-#
-#
-
-#
 # Copyright (c) 2010 Citrix Systems, Inc.
 # 
 # This library is free software; you can redistribute it and/or
@@ -32,14 +22,12 @@ INCLUDES = -I$(srcdir)/../src
 bin_PROGRAMS = ttcp-v4v v4v-proxy viptables
 
 ttcp_v4v_SOURCES = ttcp.c
-ttcp_v4v_LDADD = ../src/libv4v.la  -ldl
+ttcp_v4v_LDADD = ../src/libv4v.la
 
 v4v_proxy_SOURCES = proxy.c
-v4v_proxy_LDADD = ../src/libv4v.la -ldl
+v4v_proxy_LDADD = ../src/libv4v.la
 
 viptables_SOURCES = viptables.c
-viptables_LDADD = ../src/libv4v.la -ldl
+viptables_LDADD = ../src/libv4v.la
 
 AM_CFLAGS=-g
-
-
