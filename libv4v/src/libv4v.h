@@ -60,7 +60,10 @@ int v4v_getsockname(int fd, v4v_addr_t *addr, domid_t *partner);
 int v4v_getpeername(int fd, v4v_addr_t *addr);
 int v4v_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
 
-int v4v_convert_inet_to_xen(int arg);
+int v4v_viptables_add (int fd, v4v_viptables_rule_t *rule, int position);
+int v4v_viptables_del (int fd, v4v_viptables_rule_t *rule, int position);
+int v4v_viptables_flush (int fd);
+int v4v_viptables_list (int fd);
 
 # ifdef __cplusplus
 }
