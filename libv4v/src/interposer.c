@@ -20,7 +20,7 @@
 
 #define INTERPOSE(n,rt,p...)  \
 		static rt (*orig_ ## n) (p); \
-		INTERNAL rt n (p)
+		rt n (p)
 
 #define CHECK_INTERPOSE(n) \
 		do { \
@@ -31,7 +31,10 @@
 			} \
 		} while (1==0)
 
-#define FIND(n) do { orig_ ## n=dlsym(RTLD_NEXT, #n ); } while (1==0)
+#define FIND(n) \
+    do { \
+        orig_ ## n = dlsym(RTLD_NEXT, #n ); \
+    } while (1==0)
 
 static void init (void);
 

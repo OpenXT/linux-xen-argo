@@ -36,6 +36,11 @@
 # include <unistd.h>
 # include <fcntl.h>
 
+/* interposer.c: FIND() will look for the first symbol of given name to have
+ * the interposer called before calling that symbol.  This requires RTLD_NEXT
+ * (could be POSIX using dlopen("libc.so.6",RTLD_LAZY);dlsym(...)?).
+ */
+# define __USE_GNU
 # include <dlfcn.h>
 
 # include <memory.h>
