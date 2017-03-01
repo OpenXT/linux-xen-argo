@@ -24,7 +24,6 @@ lib_LTLIBRARIES = libv4v_nointerposer.la libv4v.la
 
 libv4v_nointerposer_la_SOURCES = \
 	libv4v.c \
-	version.c \
 	v4v.c \
 	map.c
 libv4v_nointerposer_la_LDFLAGS = \
@@ -33,7 +32,6 @@ libv4v_nointerposer_la_LDFLAGS = \
 	-export-dynamic
 libv4v_la_SOURCES = \
 	libv4v.c \
-	version.c \
 	v4v.c \
 	map.c \
 	interposer.c
