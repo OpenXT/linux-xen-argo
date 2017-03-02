@@ -13,8 +13,9 @@ libv4v
 %setup -q
 
 %build
+mkdir -p m4
 autoreconf -i
-./configure --prefix=/usr CFLAGS="-I$${PWD}/../v4v -I$${PWD}/../v4v/include" CPPFLAGS="-I$${PWD}/../v4v -I$${PWD}/../v4v/include"
+./configure --prefix=/usr/local CFLAGS="-I./src/" CPPFLAGS="-I./src/"
 make
 
 %install
