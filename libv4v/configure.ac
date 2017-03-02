@@ -24,7 +24,7 @@ AC_PREREQ(2.13)
 AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_SRCDIR(src/libv4v.h)
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
-AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_MACRO_DIR([m4])
 
 #
 # Version management.
