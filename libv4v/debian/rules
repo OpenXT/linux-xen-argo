@@ -1,24 +1,14 @@
 #!/usr/bin/make -f
-# See debhelper(7) (uncomment to enable)
-# output every command that modifies files on the build system.
-#DH_VERBOSE = 1
 
-# see EXAMPLES in dpkg-buildflags(1) and read /usr/share/dpkg/*
-DPKG_EXPORT_BUILDFLAGS = 1
-include /usr/share/dpkg/default.mk
+DEB_CFLAGS_MAINT_APPEND = -I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include
+DEB_CPPFLAGS_MAINT_APPEND = -I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include
 
-# main packaging script based on dh7 syntax
 %:
 	dh $@
 
 override_dh_auto_configure:
-	libtoolize --force
-	aclocal
-	autoheader
-	automake --force-missing --add-missing
-	autoconf
-	./configure
-	ln -s ../v4v/linux src/linux
+	mkdir -p m4
+	autoreconf -i
+	./configure --prefix=/usr CFLAGS="-I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include" CPPFLAGS="-I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include"
 
 override_dh_usrlocal:
-	echo

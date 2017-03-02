@@ -1,11 +1,16 @@
 Source: libv4v
 Section: misc
 Priority: optional
-Maintainer: OpenXT Community
-Build-Depends: autoconf,automake,libtool
-Standards-Version: 1.0.0
+Maintainer: OpenXT Community <openxt@googlegroups.com>
+Build-Depends: autoconf (>=2.13),
+               automake,
+               libtool,
+               debhelper (>=9)
+Standards-Version: 3.9.6
+Vcs-Git: https://github.com/OpenXT/v4v.git
+Vcs-Browser: https://github.com/OpenXT/v4v
 
 Package: libv4v
 Architecture: i386 amd64
-Description: libv4v
- LibV4V
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: V4V library, interposer and utilities to use OpenXT V4V protocol.

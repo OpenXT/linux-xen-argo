@@ -68,6 +68,14 @@ libtool
 *.so.*
 *.dylib
 
+# Debuild.
+debian/files
+debian/*.debhelper.log
+debian/*.postinst.debhelper
+debian/*.postrm.debhelper
+debian/*.substvars
+debian/libv4v
+
 ## Misc
 cscope.*
 libv4v-config

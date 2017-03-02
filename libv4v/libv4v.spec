@@ -13,12 +13,8 @@ libv4v
 %setup -q
 
 %build
-libtoolize --force
-aclocal
-autoheader
-automake --force-missing --add-missing
-autoconf
-./configure
+autoreconf -i
+./configure --prefix=/usr CFLAGS="-I$${PWD}/../v4v -I$${PWD}/../v4v/include" CPPFLAGS="-I$${PWD}/../v4v -I$${PWD}/../v4v/include"
 make
 
 %install
