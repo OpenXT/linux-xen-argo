@@ -65,8 +65,10 @@ AC_C_INLINE
 AC_C_CONST
 
 # Required headers.
-AC_CHECK_HEADERS([linux/v4v_dev.h], [] , AC_MSG_ERROR([linux/v4v_dev.h is missing.]),
-                 [#define V4V_EXCLUDE_INTERNAL
+AC_CHECK_HEADERS([xen/v4v.h linux/v4v_dev.h], [] , AC_MSG_ERROR([V4V headers are missing.]),
+                 [#include <stdint.h>
+                  #include <unistd.h>
+                  #define V4V_EXCLUDE_INTERNAL
                   ])
 
 # Required libraries.
