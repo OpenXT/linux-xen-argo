@@ -20,6 +20,5 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = src test app
 
-bin_SCRIPTS = libv4v-config
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = libv4v.pc

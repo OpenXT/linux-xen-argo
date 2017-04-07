@@ -75,7 +75,6 @@ AC_CHECK_HEADERS([xen/v4v.h linux/v4v_dev.h], [] , AC_MSG_ERROR([V4V headers are
 AC_CHECK_LIB([dl], [dlopen])
 
 # Output files.
-AC_CONFIG_FILES([libv4v-config], [chmod +x libv4v-config])
 AC_OUTPUT([Makefile
            src/Makefile
 	   test/Makefile
