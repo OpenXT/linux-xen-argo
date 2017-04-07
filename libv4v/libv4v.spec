@@ -15,12 +15,35 @@ libv4v
 %build
 mkdir -p m4
 autoreconf -i
-./configure --prefix=/usr/local CFLAGS="-I./src/" CPPFLAGS="-I./src/"
-make
+./configure \
+	--prefix=%{_prefix} \
+	--libdir=%{_libdir} \
+	--includedir=%{_includedir} \
+	CFLAGS="-I./src/" CPPFLAGS="-I./src/"
+%make_build
 
 %install
-rm -rf %{buildroot}
-make DESTDIR=%{buildroot} install
+make DESTDIR=%{buildroot} -C src install
+make DESTDIR=%{buildroot} install-data-am
 
 %files
-/usr/local/*
+%{_libdir}/libv4v-1.0.so.0
+%{_libdir}/libv4v-1.0.so.0.1.1
+%{_libdir}/libv4v_nointerposer-1.0.so.0
+%{_libdir}/libv4v_nointerposer-1.0.so.0.1.1
+
+%package devel
+Summary: libv4v-devel
+
+%description devel
+libv4v-devel
+
+%files devel
+%{_includedir}/libv4v.h
+%{_libdir}/libv4v.a
+%{_libdir}/libv4v.la
+%{_libdir}/libv4v.so
+%{_libdir}/libv4v_nointerposer.a
+%{_libdir}/libv4v_nointerposer.la
+%{_libdir}/libv4v_nointerposer.so
+%{_libdir}/pkgconfig/libv4v.pc
