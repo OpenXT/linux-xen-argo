@@ -49,8 +49,15 @@ AM_PROG_AR
 #
 # Libtool version system.
 #
-LT_CURRENT=$VERSION_MAJOR
-LT_REVISION=$VERSION_MINOR
+# TODO: A lot of scripts assume libv4v-1.0.so.0 or even libv4v-1.0.so.0.0.0 to
+# exist and have hardcoded that value.
+# It makes little difference to maintain the soname for now since the version
+# is unlikely to change soon, but will most certainly break the various scripts
+# trying to use the interposer.
+#LT_CURRENT=$VERSION_MAJOR
+LT_CURRENT=0
+#LT_REVISION=$VERSION_MINOR
+LT_REVISION=0
 LT_AGE=0
 LT_RELEASE=$VERSION_MAJOR.$VERSION_MINOR
 AC_SUBST(LT_CURRENT)

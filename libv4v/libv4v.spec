@@ -28,9 +28,9 @@ make DESTDIR=%{buildroot} install-data-am
 
 %files
 %{_libdir}/libv4v-1.0.so.0
-%{_libdir}/libv4v-1.0.so.0.1.1
+%{_libdir}/libv4v-1.0.so.0.0.0
 %{_libdir}/libv4v_nointerposer-1.0.so.0
-%{_libdir}/libv4v_nointerposer-1.0.so.0.1.1
+%{_libdir}/libv4v_nointerposer-1.0.so.0.0.0
 
 %package devel
 Summary: libv4v-devel
