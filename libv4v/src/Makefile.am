@@ -29,6 +29,8 @@ libv4v_nointerposer_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE) \
 	-export-dynamic
+libv4v_nointerposer_la_LIBTOOLFLAGS = --silent
+
 libv4v_la_SOURCES = \
 	v4v.c \
 	map.c \
@@ -37,3 +39,4 @@ libv4v_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE) \
 	-export-dynamic
+libv4v_la_LIBTOOLFLAGS = --silent

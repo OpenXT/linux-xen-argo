@@ -19,12 +19,13 @@ autoreconf -i
 	--prefix=%{_prefix} \
 	--libdir=%{_libdir} \
 	--includedir=%{_includedir} \
+	--enable-silent-rules \
 	CFLAGS="-I./src/" CPPFLAGS="-I./src/"
 %make_build
 
 %install
-make DESTDIR=%{buildroot} -C src install
-make DESTDIR=%{buildroot} install-data-am
+make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} -C src install 2>&1 | sed "s/libtool: install: warning:/libtool: install: info:/"
+make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} install-data-am
 
 %files
 %{_libdir}/libv4v-1.0.so.0
