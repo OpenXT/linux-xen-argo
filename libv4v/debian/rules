@@ -1,14 +1,9 @@
 #!/usr/bin/make -f
 
-DEB_CFLAGS_MAINT_APPEND = -I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include
-DEB_CPPFLAGS_MAINT_APPEND = -I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include
-
 %:
-	dh $@
+	dh $@ --with autoreconf
 
 override_dh_auto_configure:
-	mkdir -p m4
-	autoreconf -i
-	./configure --prefix=/usr CFLAGS="-I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include" CPPFLAGS="-I$(CURDIR)/../v4v -I$(CURDIR)/../v4v/include"
+	dh_auto_configure -- --prefix=/usr CFLAGS="$(CFLAGS) -I./src" CPPFLAGS="$(CPPFLAGS) -I./src" LDFLAGS=$(LDFLAGS)
 
 override_dh_usrlocal:
