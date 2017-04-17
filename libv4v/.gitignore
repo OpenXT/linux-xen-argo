@@ -27,7 +27,6 @@ config.h.in~
 stamp-h1
 /config.log
 /config.status
-m4
 
 # https://www.gnu.org/software/libtool/
 /ltmain.sh

@@ -13,7 +13,6 @@ libv4v
 %setup -q
 
 %build
-mkdir -p m4
 autoreconf -i
 ./configure \
 	--prefix=%{_prefix} \
