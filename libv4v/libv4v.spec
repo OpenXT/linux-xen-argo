@@ -23,7 +23,7 @@ autoreconf -i
 %make_build
 
 %install
-make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} -C src install 2>&1 | sed "s/libtool: install: warning:/libtool: install: info:/"
+make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} -C src install 2>&1 | sed "s/libtool: install: [w]arning:/libtool: install: info:/"
 make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} install-data-am
 
 %files
