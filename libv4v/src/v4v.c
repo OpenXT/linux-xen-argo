@@ -62,20 +62,20 @@ linearize_iov (void *_buf, struct iovec *iov, int n)
 }
 
 
-EXTERNAL int
+int
 v4v_socket (int type)
 {
   int ret;
   int flags=type;
 
-#ifdef SOCK_CLOEXEC 
+#ifdef SOCK_CLOEXEC
   type &= ~SOCK_CLOEXEC;
 #endif
 
 #ifdef SOCK_NONBLOCK
   type &= ~SOCK_NONBLOCK;
 #endif
-    
+
   switch (type)
     {
     case SOCK_STREAM:
@@ -90,7 +90,7 @@ v4v_socket (int type)
     }
 
 
-#ifdef SOCK_CLOEXEC  
+#ifdef SOCK_CLOEXEC
     if (flags & SOCK_CLOEXEC) {
     long arg;
     arg = fcntl(ret, F_GETFD, arg);
@@ -117,7 +117,7 @@ v4v_socket (int type)
   return ret;
 }
 
-EXTERNAL int
+int
 v4v_close (int fd)
 {
   return close (fd);
@@ -125,7 +125,7 @@ v4v_close (int fd)
 
 
 
-EXTERNAL int
+int
 v4v_bind (int fd, v4v_addr_t * addr, domid_t partner)
 {
   struct v4v_ring_id id;
@@ -143,21 +143,21 @@ v4v_bind (int fd, v4v_addr_t * addr, domid_t partner)
 
 
 
-EXTERNAL int
+int
 v4v_connect (int fd, v4v_addr_t * peer)
 {
   //no need for mlock, peer is copied into kernel memory
   return v4v_ioctl (fd, V4VIOCCONNECT, peer);
 }
 
-EXTERNAL int
+int
 v4v_listen (int fd, int backlog)
 {
   //no need for mlock
   return v4v_ioctl (fd, V4VIOCLISTEN, &backlog);
 }
 
-EXTERNAL int
+int
 v4v_accept (int fd, v4v_addr_t * peer)
 {
   //no need for mlock, peer accessed from kernel
@@ -166,7 +166,7 @@ v4v_accept (int fd, v4v_addr_t * peer)
 
 
 
-EXTERNAL ssize_t
+ssize_t
 v4v_send (int fd, const void *buf, size_t len, int flags)
 {
   struct v4v_dev op;
@@ -190,7 +190,7 @@ v4v_send (int fd, const void *buf, size_t len, int flags)
   return ret;
 }
 
-EXTERNAL ssize_t
+ssize_t
 v4v_sendmsg (int fd, const struct msghdr * msg, int flags)
 {
   struct v4v_dev op;
@@ -230,7 +230,7 @@ v4v_sendmsg (int fd, const struct msghdr * msg, int flags)
   return ret;
 }
 
-EXTERNAL ssize_t
+ssize_t
 v4v_sendto (int fd, const void *buf, size_t len, int flags,
             v4v_addr_t * dest_addr)
 {
@@ -260,7 +260,7 @@ v4v_sendto (int fd, const void *buf, size_t len, int flags,
 }
 
 
-EXTERNAL ssize_t
+ssize_t
 v4v_recv (int fd, void *buf, size_t len, int flags)
 {
   struct v4v_dev op;
@@ -277,7 +277,7 @@ v4v_recv (int fd, void *buf, size_t len, int flags)
   return ret;
 }
 
-EXTERNAL ssize_t
+ssize_t
 v4v_recvmsg (int fd, struct msghdr * msg, int flags)
 {
   struct v4v_dev op;
@@ -307,7 +307,7 @@ v4v_recvmsg (int fd, struct msghdr * msg, int flags)
 }
 
 
-EXTERNAL ssize_t
+ssize_t
 v4v_recvfrom (int fd, void *buf, size_t len, int flags, v4v_addr_t * src_addr)
 {
   struct v4v_dev op;
@@ -323,7 +323,7 @@ v4v_recvfrom (int fd, void *buf, size_t len, int flags, v4v_addr_t * src_addr)
 }
 
 
-EXTERNAL int
+int
 v4v_getsockname (int fd, v4v_addr_t * addr, domid_t * partner)
 {
   struct v4v_ring_id id;
@@ -342,24 +342,14 @@ v4v_getsockname (int fd, v4v_addr_t * addr, domid_t * partner)
 }
 
 
-EXTERNAL int
+int
 v4v_getpeername (int fd, v4v_addr_t * addr)
 {
   //all in kernel
   return v4v_ioctl (fd, V4VIOCGETPEERNAME, addr);
 }
 
-#if 0
-EXTERNAL int
-v4v_setsockopt (int fd, int level, int optname, void *optval,
-                socklen_t optlen)
-{
-  errno = ENOPROTOOPT;
-  return -1;
-}
-#endif
-
-EXTERNAL int
+int
 v4v_getsockopt (int fd, int level, int optname,
                 void *optval, socklen_t * optlen)
 {
@@ -403,7 +393,7 @@ v4v_getsockopt (int fd, int level, int optname,
   return -1;
 }
 
-EXTERNAL int
+int
 v4v_viptables_add (int fd, v4v_viptables_rule_t* rule, int position)
 {
   int ret;
@@ -420,7 +410,7 @@ v4v_viptables_add (int fd, v4v_viptables_rule_t* rule, int position)
   return ret;
 }
 
-EXTERNAL int
+int
 v4v_viptables_del (int fd, v4v_viptables_rule_t* rule, int position)
 {
   int ret;
@@ -441,7 +431,7 @@ v4v_viptables_del (int fd, v4v_viptables_rule_t* rule, int position)
   return ret;
 }
 
-EXTERNAL int
+int
 v4v_viptables_flush (int fd)
 {
   int ret;
@@ -476,7 +466,7 @@ v4v_viptables_print_rule(struct v4v_viptables_rule *rule)
   if (rule->src.port == -1)
     printf("*");
   else
-    printf("%i", rule->src.port);  
+    printf("%i", rule->src.port);
 
   printf(" -> ");
 
@@ -495,7 +485,7 @@ v4v_viptables_print_rule(struct v4v_viptables_rule *rule)
   printf("\n");
 }
 
-EXTERNAL int
+int
 v4v_viptables_list (int fd)
 {
   int ret, i, total_rules_printed = 0, rules_i = 1;

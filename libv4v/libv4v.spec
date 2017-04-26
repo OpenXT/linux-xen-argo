@@ -13,17 +13,37 @@ libv4v
 %setup -q
 
 %build
-libtoolize --force
-aclocal
-autoheader
-automake --force-missing --add-missing
-autoconf
-./configure
-make
+autoreconf -i
+./configure \
+	--prefix=%{_prefix} \
+	--libdir=%{_libdir} \
+	--includedir=%{_includedir} \
+	--enable-silent-rules \
+	CFLAGS="-I./src/" CPPFLAGS="-I./src/"
+%make_build
 
 %install
-rm -rf %{buildroot}
-make DESTDIR=%{buildroot} install
+make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} -C src install 2>&1 | sed "s/libtool: install: [w]arning:/libtool: install: info:/"
+make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} install-data-am
 
 %files
-/usr/local/*
+%{_libdir}/libv4v-1.0.so.0
+%{_libdir}/libv4v-1.0.so.0.0.0
+%{_libdir}/libv4v_nointerposer-1.0.so.0
+%{_libdir}/libv4v_nointerposer-1.0.so.0.0.0
+
+%package devel
+Summary: libv4v-devel
+
+%description devel
+libv4v-devel
+
+%files devel
+%{_includedir}/libv4v.h
+%{_libdir}/libv4v.a
+%{_libdir}/libv4v.la
+%{_libdir}/libv4v.so
+%{_libdir}/libv4v_nointerposer.a
+%{_libdir}/libv4v_nointerposer.la
+%{_libdir}/libv4v_nointerposer.so
+%{_libdir}/pkgconfig/libv4v.pc

@@ -1,14 +1,4 @@
 #
-# Makefile.am:
-#
-#
-# $Id:$
-#
-# $Log:$
-#
-#
-
-#
 # Copyright (c) 2012 Citrix Systems, Inc.
 # 
 # This library is free software; you can redistribute it and/or
@@ -26,14 +16,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-
-INCLUDES = -I$(srcdir)/../src 
+AM_CPPFLAGS = -I$(srcdir)/../src
+AM_CFLAGS = -g
 
 noinst_PROGRAMS = test
 
 test_SOURCES = test.c
-test_LDADD = ../src/libv4v.la -ldl
-
-AM_CFLAGS=-g
-
-
+test_LDADD = ../src/libv4v.la
