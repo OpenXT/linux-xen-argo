@@ -66,6 +66,10 @@
 #include <xen/xen.h>
 #endif /* XC_DKMS */
 #include <linux/sched.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+#include <linux/cred.h>
+#include <linux/sched/signal.h>
+#endif
 #endif /* XC_KERNEL */
 
 #include "v4v.h"
