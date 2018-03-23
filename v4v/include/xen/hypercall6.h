@@ -29,7 +29,7 @@
 #endif
 
 #undef __HYPERCALL_DECLS
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)) || (LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0))
 #define __HYPERCALL_DECLS						    \
 	register unsigned long __res  asm(__HYPERCALL_RETREG);		    \
 	register unsigned long __arg1 asm(__HYPERCALL_ARG1REG) = __arg1;    \
