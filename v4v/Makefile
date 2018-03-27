@@ -20,6 +20,9 @@ V4V_VERSION=1.0
 obj-m += v4v.o 
 KVERSION := $(shell uname -r)
 
+# 6-args hypercall will use ebp for the 6th argument on x86.
+ccflags-$(CONFIG_X86_32) += -fomit-frame-pointer
+
 all:
 	make -C /lib/modules/${KVERSION}/build M=$(PWD) modules -I$(PWD) EXTRA_CFLAGS="-g -I$(PWD)/include -I$(PWD)"
 
