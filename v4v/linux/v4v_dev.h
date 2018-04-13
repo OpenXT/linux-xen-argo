@@ -27,11 +27,28 @@ typedef enum
   V4V_PTYPE_STREAM,
 } v4v_ptype;
 
+/* The pointers make this depend on compilation. */
 struct v4v_dev {
 	void *buf;
 	size_t len;
 	int flags;
 	v4v_addr_t *addr;
+};
+
+/* A 64bit version of v4v_dev */
+struct v4v_dev_64 {
+	uint64_t buf;
+	size_t len;
+	int flags;
+	uint64_t addr;
+};
+
+/* A 32bit version of v4v_dev used for compat ioctls */
+struct v4v_dev_32 {
+	uint32_t buf;
+	uint32_t len;
+	int32_t flags;
+	uint32_t addr;
 };
 
 struct v4v_viptables_rule_pos {
@@ -51,6 +68,9 @@ struct v4v_viptables_rule_pos {
 #define V4VIOCACCEPT		_IOW (V4V_TYPE,  8, v4v_addr_t) 
 #define V4VIOCSEND		_IOW (V4V_TYPE,  9, struct v4v_dev)
 #define V4VIOCRECV		_IOW (V4V_TYPE, 10, struct v4v_dev)
+/* V4VIOCSEND32==V4VIOCSEND for 32bit kernels, but not for compat 64bit */
+#define V4VIOCSEND32		_IOW (V4V_TYPE,  9, struct v4v_dev_32)
+#define V4VIOCRECV32		_IOW (V4V_TYPE, 10, struct v4v_dev_32)
 #define V4VIOCVIPTABLESADD	_IOW (V4V_TYPE, 11, struct v4v_viptables_rule_pos)
 #define V4VIOCVIPTABLESDEL	_IOW (V4V_TYPE, 12, struct v4v_viptables_rule_pos)
 #define V4VIOCVIPTABLESLIST	_IOW (V4V_TYPE, 13, uint32_t) /*unused args */
