@@ -2924,6 +2924,7 @@ allocate_fd_with_private (void *private)
 
 
   f->private_data = private;
+  f->f_flags = O_RDWR;
 
   fd_install (fd, f);
 
@@ -3286,6 +3287,8 @@ v4v_open_dgram (struct inode *inode, struct file *f)
 #endif
 
   f->private_data = p;
+  f->f_flags = O_RDWR;
+
   return 0;
 }
 
@@ -3318,6 +3321,8 @@ v4v_open_stream (struct inode *inode, struct file *f)
 #endif
 
   f->private_data = p;
+  f->f_flags = O_RDWR;
+
   return 0;
 }
 
