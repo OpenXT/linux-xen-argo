@@ -49,6 +49,7 @@
 #endif /* XC_DKMS */
 
 #include <linux/version.h>
+#include <linux/compat.h>
 #include <linux/mm.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -2924,6 +2925,7 @@ allocate_fd_with_private (void *private)
 
 
   f->private_data = private;
+  f->f_flags = O_RDWR;
 
   fd_install (fd, f);
 
@@ -3286,6 +3288,8 @@ v4v_open_dgram (struct inode *inode, struct file *f)
 #endif
 
   f->private_data = p;
+  f->f_flags = O_RDWR;
+
   return 0;
 }
 
@@ -3318,6 +3322,8 @@ v4v_open_stream (struct inode *inode, struct file *f)
 #endif
 
   f->private_data = p;
+  f->f_flags = O_RDWR;
+
   return 0;
 }
 
@@ -3670,13 +3676,81 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
       }
       break;
     default:
-      printk (KERN_ERR "unkown ioctl: V4VIOCACCEPT=%x\n", V4VIOCACCEPT);
+      printk (KERN_ERR "unknown ioctl: cmd=%x V4VIOCACCEPT=%x\n", cmd,
+              V4VIOCACCEPT);
       DEBUG_BANANA;
     }
   DEBUG_APPLE;
   return rc;
 }
 
+#ifdef CONFIG_COMPAT
+static long
+v4v_compat_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
+{
+    int nonblock = f->f_flags & O_NONBLOCK;
+    struct v4v_private *p = f->private_data;
+    int rc;
+
+    switch (cmd) {
+    case V4VIOCSEND32:
+      {
+        struct v4v_dev a;
+        struct v4v_dev_32 a32;
+        v4v_addr_t addr, *paddr = NULL;
+
+        if (copy_from_user (&a32, (void __user *)arg, sizeof(a32)))
+          return -EFAULT;
+
+        a.buf = compat_ptr(a32.buf);
+        a.len = a32.len;
+        a.flags = a32.flags;
+        a.addr = compat_ptr(a32.addr);
+
+        if (a.addr) {
+          if (copy_from_user (&addr, (void __user *)a.addr, sizeof(v4v_addr_t)))
+            return -EFAULT;
+          paddr = &addr;
+          DEBUG_APPLE;
+        }
+
+        rc = v4v_sendto (p, a.buf, a.len, a.flags, paddr, nonblock);
+      }
+      break;
+    case V4VIOCRECV32:
+      DEBUG_APPLE;
+      {
+        struct v4v_dev_32 a32;
+        struct v4v_dev a;
+        v4v_addr_t addr;
+
+        if (copy_from_user (&a32, (void __user *)arg, sizeof(a32)))
+          return -EFAULT;
+
+        a.buf = compat_ptr(a32.buf);
+        a.len = a32.len;
+        a.flags = a32.flags;
+        a.addr = compat_ptr(a32.addr);
+
+        if (a.addr) {
+            if (copy_from_user (&addr, a.addr, sizeof(v4v_addr_t)))
+              return -EFAULT;
+            rc = v4v_recvfrom (p, a.buf, a.len, a.flags, &addr, nonblock);
+            if (rc < 0)
+              return rc;
+            if (copy_to_user (a.addr, &addr, sizeof(v4v_addr_t)))
+              return -EFAULT;
+        } else
+            rc = v4v_recvfrom (p, a.buf, a.len, a.flags, NULL, nonblock);
+      }
+      break;
+    default:
+      rc = v4v_ioctl(f, cmd, (unsigned long)compat_ptr(arg));
+    }
+
+    return rc;
+}
+#endif
 
 static unsigned int
 v4v_poll (struct file *f, poll_table * pt)
@@ -3749,6 +3823,9 @@ static const struct file_operations v4v_fops_stream = {
   .write = v4v_write,
   .read = v4v_read,
   .unlocked_ioctl = v4v_ioctl,
+#ifdef CONFIG_COMPAT
+  .compat_ioctl = v4v_compat_ioctl,
+#endif
   .open = v4v_open_stream,
   .release = v4v_release,
   .poll = v4v_poll,
@@ -3760,6 +3837,9 @@ static const struct file_operations v4v_fops_dgram = {
   .write = v4v_write,
   .read = v4v_read,
   .unlocked_ioctl = v4v_ioctl,
+#ifdef CONFIG_COMPAT
+  .compat_ioctl = v4v_compat_ioctl,
+#endif
   .open = v4v_open_dgram,
   .release = v4v_release,
   .poll = v4v_poll,
