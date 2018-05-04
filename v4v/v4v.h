@@ -58,9 +58,15 @@
 #define __HYPERVISOR_v4v_op               39
 static inline int __must_check
 HYPERVISOR_v4v_op(int cmd, void *arg1, void *arg2, void *arg3,
-			uint32_t arg4, uint32_t arg5)                         
-{                                                             
-	return _hypercall6(int, v4v_op, cmd, arg1, arg2, arg3, arg4, arg5);
+			uint32_t arg4, uint32_t arg5)
+{
+	int ret;
+
+	stac();
+	ret = _hypercall6(int, v4v_op, cmd, arg1, arg2, arg3, arg4, arg5);
+	clac();
+
+	return ret;
 }
 #endif
 
