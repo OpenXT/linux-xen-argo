@@ -1,0 +1,2 @@
+header-y += hypercall6.h
+header-y += v4v.h
