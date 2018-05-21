@@ -1,0 +1,7 @@
+Makefile usr/src/v4v-DEB_VERSION_UPSTREAM
+Kbuild usr/src/v4v-DEB_VERSION_UPSTREAM
+v4v.c usr/src/v4v-DEB_VERSION_UPSTREAM
+include/linux/v4v_dev.h usr/src/v4v-DEB_VERSION_UPSTREAM/include/linux
+include/xen/v4v.h usr/src/v4v-DEB_VERSION_UPSTREAM/include/xen
+include/xen/hypercall6.h usr/src/v4v-DEB_VERSION_UPSTREAM/include/xen
+include/v4v.h usr/src/v4v-DEB_VERSION_UPSTREAM/include

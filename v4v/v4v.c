@@ -291,6 +291,8 @@ struct v4v_private
 
   int send_blocked;
   int rx;
+
+  struct timer_list to;
 };
 
 struct pending_recv
@@ -2713,9 +2715,15 @@ v4v_listen (struct v4v_private *p)
  * EC: Worst case scenario, see comment in v4v_release.
  */
 static void
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0) )
 respite(unsigned long data)
 {
   struct v4v_private *p = (void *)data;
+#else
+respite(struct timer_list *t)
+{
+  struct v4v_private *p = from_timer(p, t, to);
+#endif
 
   p->pending_error = -ETIMEDOUT;
   p->state = V4V_STATE_DISCONNECTED;
@@ -2727,7 +2735,6 @@ v4v_connect (struct v4v_private *p, v4v_addr_t * peer, int nonblock)
 {
   struct v4v_stream_header sh;
   int ret = -EINVAL;
-  struct timer_list to;
 
   if (p->ptype == V4V_PTYPE_DGRAM)
     {
@@ -2822,12 +2829,15 @@ v4v_connect (struct v4v_private *p, v4v_addr_t * peer, int nonblock)
 
   DEBUG_APPLE;
 
-  init_timer(&to);
-  to.expires = jiffies + msecs_to_jiffies(5000);          /* Default 5 seconds (in jiffies). A sysfs interface would be nice though. */
-  to.function = &respite;
-  to.data = (unsigned long) p;
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0) )
+  init_timer(&p->to);
+  p->to.function = &respite;
+  p->to.data = (unsigned long) p;
+#else
+  timer_setup(&p->to, respite, 0);
+#endif
+  mod_timer(&p->to, jiffies + msecs_to_jiffies(5000));          /* Default 5 seconds (in jiffies). A sysfs interface would be nice though. */
 
-  add_timer(&to);
   while (p->state != V4V_STATE_CONNECTED)
     {
       DEBUG_APPLE;
@@ -2836,7 +2846,7 @@ v4v_connect (struct v4v_private *p, v4v_addr_t * peer, int nonblock)
                                   (p->state != V4V_STATE_CONNECTING));
       DEBUG_APPLE;
       if (ret) {
-        del_timer(&to);
+        del_timer(&p->to);
         return ret;
       }
       DEBUG_APPLE;
@@ -2851,7 +2861,7 @@ v4v_connect (struct v4v_private *p, v4v_addr_t * peer, int nonblock)
         }
       DEBUG_APPLE;
     }
-  del_timer(&to);
+  del_timer(&p->to);
   DEBUG_APPLE;
 
 
@@ -3676,7 +3686,7 @@ v4v_ioctl (struct file *f, unsigned int cmd, unsigned long arg)
       }
       break;
     default:
-      printk (KERN_ERR "unknown ioctl: cmd=%x V4VIOCACCEPT=%x\n", cmd,
+      printk (KERN_ERR "unknown ioctl: cmd=%x V4VIOCACCEPT=%lx\n", cmd,
               V4VIOCACCEPT);
       DEBUG_BANANA;
     }

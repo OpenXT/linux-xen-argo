@@ -1,0 +1,4 @@
+obj-m += v4v.o
+
+ccflags-y := -I$(src)/include
+ccflags-$(CONFIG_X86_32) += -fomit-frame-pointer

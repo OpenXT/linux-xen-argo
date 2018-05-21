@@ -1,0 +1,12 @@
+Source: v4v
+Section: kernel
+Priority: optional
+Maintainer: OpenXT Community
+Build-Depends: dkms
+Standards-Version: 1.0.0
+
+Package: v4v-dkms
+Architecture: all
+Depends: dkms
+Description: OpenXT v4v
+ V4V module
