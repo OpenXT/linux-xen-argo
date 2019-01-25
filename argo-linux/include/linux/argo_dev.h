@@ -33,7 +33,7 @@ struct argo_dev {
 	void *buf;
 	size_t len;
 	int flags;
-	argo_addr_t *addr;
+	xen_argo_addr_t *addr;
 };
 
 /* A 64bit version of argo_dev */
@@ -52,16 +52,22 @@ struct argo_dev_32 {
 	uint32_t addr;
 };
 
+struct argo_ring_id {
+	domid_t domain_id;
+	domid_t partner_id;
+	xen_argo_port_t aport;
+};
+
 #define ARGO_TYPE 'W'
 
 #define ARGOIOCSETRINGSIZE 	_IOW (ARGO_TYPE,  1, uint32_t)
 #define ARGOIOCBIND		_IOW (ARGO_TYPE,  2, struct argo_ring_id)
 #define ARGOIOCGETSOCKNAME	_IOW (ARGO_TYPE,  3, struct argo_ring_id)
-#define ARGOIOCGETPEERNAME	_IOW (ARGO_TYPE,  4, argo_addr_t)
-#define ARGOIOCCONNECT		_IOW (ARGO_TYPE,  5, argo_addr_t)
+#define ARGOIOCGETPEERNAME	_IOW (ARGO_TYPE,  4, xen_argo_addr_t)
+#define ARGOIOCCONNECT		_IOW (ARGO_TYPE,  5, xen_argo_addr_t)
 #define ARGOIOCGETCONNECTERR	_IOW (ARGO_TYPE,  6, int)
 #define ARGOIOCLISTEN		_IOW (ARGO_TYPE,  7, uint32_t) /*unused args */
-#define ARGOIOCACCEPT		_IOW (ARGO_TYPE,  8, argo_addr_t) 
+#define ARGOIOCACCEPT		_IOW (ARGO_TYPE,  8, xen_argo_addr_t)
 #define ARGOIOCSEND		_IOW (ARGO_TYPE,  9, struct argo_dev)
 #define ARGOIOCRECV		_IOW (ARGO_TYPE, 10, struct argo_dev)
 /* ARGOIOCSEND32==ARGOIOCSEND for 32bit kernels, but not for compat 64bit */

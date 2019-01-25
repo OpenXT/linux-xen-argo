@@ -4,16 +4,26 @@
  * Derived from v4v, the version 2 of v2v.
  *
  * Copyright (c) 2010, Citrix Systems
- * Copyright (c) 2018, BAE Systems
+ * Copyright (c) 2018-2019, BAE Systems
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ *
  */
 
 #ifndef __XEN_PUBLIC_ARGO_H__
@@ -21,134 +31,144 @@
 
 #ifdef __XEN__
 #include "xen.h"
-#include "event_channel.h"
 #else
 #include <xen/interface/xen.h>
 #endif
 
-#define ARGO_RING_MAGIC      0xbd67e163e7777f2fULL
-#define ARGO_RING_DATA_MAGIC 0xcce4d30fbc82e92aULL
-
-#define ARGO_DOMID_ANY           DOMID_INVALID
+#define XEN_ARGO_DOMID_ANY       DOMID_INVALID
 
 /*
- * The maximum size of an Argo ring is defined to be: 16GB
- *  -- which is 0x1000000 or 16777216 bytes.
+ * The maximum size of an Argo ring is defined to be: 16MB
+ *  -- which is 0x1000000 bytes.
  * A byte index into the ring is at most 24 bits.
  */
-#define ARGO_MAX_RING_SIZE  (16777216ULL)
+#define XEN_ARGO_MAX_RING_SIZE  (0x1000000ULL)
+
+/* Fixed-width type for "argo port" number. Nothing to do with evtchns. */
+typedef uint32_t xen_argo_port_t;
+
+/* gfn type: 64-bit on all architectures to aid avoiding a compat ABI */
+typedef uint64_t xen_argo_gfn_t;
 
 /*
- * ARGO_MAXIOV : maximum number of iovs accepted in a single sendv.
- * Rationale for the value:
- * The Linux argo driver never passes more than two iovs.
- * Linux defines UIO_MAXIOV as 1024.
- * POSIX mandates at least 16 -- not that this is a POSIX API of course.
+ * XEN_ARGO_MAXIOV : maximum number of iovs accepted in a single sendv.
+ * Caution is required if this value is increased: this determines the size of
+ * an array of xen_argo_iov_t structs on the hypervisor stack, so could cause
+ * stack overflow if the value is too large.
+ * The Linux Argo driver never passes more than two iovs.
  *
- * Limit the total amount of data posted in a single argo operation to
- * no more than 2^31 bytes to reduce risk of integer overflow defects.
- * Each argo iov can hold ~ 2^24 bytes, so set ARGO_MAXIOV to 2^(31-24),
- * minus one to enable simple efficient bounds checking via masking: 127.
+ * This value should also not exceed 128 to ensure that the total amount of data
+ * posted in a single Argo sendv operation cannot exceed 2^31 bytes, to reduce
+ * risk of integer overflow defects:
+ * Each argo iov can hold ~ 2^24 bytes, so XEN_ARGO_MAXIOV <= 2^(31-24),
+ * ie. keep XEN_ARGO_MAXIOV <= 128.
 */
-#define ARGO_MAXIOV          127U
+#define XEN_ARGO_MAXIOV          8U
 
-typedef struct argo_iov
-{
-    uint64_t iov_base;
-    uint32_t iov_len;
-    uint32_t pad;
-} argo_iov_t;
 #ifdef DEFINE_XEN_GUEST_HANDLE
-DEFINE_XEN_GUEST_HANDLE(argo_iov_t);
+DEFINE_XEN_GUEST_HANDLE(uint8_t);
 #endif
 
-/* pfn type: 64-bit on all architectures to aid avoiding a compat ABI */
-typedef uint64_t argo_pfn_t;
-
-typedef struct argo_addr
+typedef struct xen_argo_iov
 {
-    uint32_t port;
+#ifdef XEN_GUEST_HANDLE_64
+    XEN_GUEST_HANDLE_64(uint8_t) iov_hnd;
+#else
+    uint64_t iov_hnd;
+#endif
+    uint32_t iov_len;
+    uint32_t pad;
+} xen_argo_iov_t;
+
+typedef struct xen_argo_addr
+{
+    xen_argo_port_t aport;
     domid_t domain_id;
     uint16_t pad;
-} argo_addr_t;
+} xen_argo_addr_t;
 
-typedef struct argo_send_addr
+typedef struct xen_argo_send_addr
 {
-    argo_addr_t src;
-    argo_addr_t dst;
-} argo_send_addr_t;
+    struct xen_argo_addr src;
+    struct xen_argo_addr dst;
+} xen_argo_send_addr_t;
 
-typedef struct argo_ring_id
+typedef struct xen_argo_ring
 {
-    struct argo_addr addr;
-    domid_t partner;
-    uint16_t pad;
-} argo_ring_id_t;
-
-typedef struct argo_ring
-{
-    uint64_t magic;
-    argo_ring_id_t id;
-    uint32_t len;
     /* Guests should use atomic operations to access rx_ptr */
     uint32_t rx_ptr;
     /* Guests should use atomic operations to access tx_ptr */
     uint32_t tx_ptr;
-    uint8_t reserved[32];
+    /*
+     * Header space reserved for later use. Align the start of the ring to a
+     * multiple of the message slot size.
+     */
+    uint8_t reserved[56];
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
     uint8_t ring[];
 #elif defined(__GNUC__)
     uint8_t ring[0];
 #endif
-} argo_ring_t;
+} xen_argo_ring_t;
 
-/*
- * Messages on the ring are padded to 128 bits
- * Len here refers to the exact length of the data not including the
- * 128 bit header. The message uses
- * ((len + 0xf) & ~0xf) + sizeof(argo_ring_message_header) bytes.
- * Using typeof(a) make clear that this does not truncate any high-order bits.
- */
-#define ARGO_ROUNDUP(a) (((a) + 0xf) & ~(typeof(a))0xf)
+typedef struct xen_argo_register_ring
+{
+    xen_argo_port_t aport;
+    domid_t partner_id;
+    uint16_t pad;
+    uint32_t len;
+} xen_argo_register_ring_t;
+
+typedef struct xen_argo_unregister_ring
+{
+    xen_argo_port_t aport;
+    domid_t partner_id;
+    uint16_t pad;
+} xen_argo_unregister_ring_t;
+
+/* Messages on the ring are padded to a multiple of this size. */
+#define XEN_ARGO_MSG_SLOT_SIZE 0x10
 
 /*
  * Notify flags
  */
-/* Ring is empty */
-#define ARGO_RING_DATA_F_EMPTY       (1U << 0)
 /* Ring exists */
-#define ARGO_RING_DATA_F_EXISTS      (1U << 1)
-/* Pending interrupt exists. Do not rely on this field - for profiling only */
-#define ARGO_RING_DATA_F_PENDING     (1U << 2)
-/* Sufficient space to queue space_required bytes exists */
-#define ARGO_RING_DATA_F_SUFFICIENT  (1U << 3)
+#define XEN_ARGO_RING_EXISTS            (1U << 0)
+/* Ring is shared, not unicast */
+#define XEN_ARGO_RING_SHARED            (1U << 1)
+/* Ring is empty */
+#define XEN_ARGO_RING_EMPTY             (1U << 2)
+/* Sufficient space to queue space_required bytes might exist */
+#define XEN_ARGO_RING_SUFFICIENT        (1U << 3)
+/* Insufficient ring size for space_required bytes */
+#define XEN_ARGO_RING_EMSGSIZE          (1U << 4)
+/* Too many domains waiting for available space signals for this ring */
+#define XEN_ARGO_RING_EBUSY             (1U << 5)
 
-typedef struct argo_ring_data_ent
+typedef struct xen_argo_ring_data_ent
 {
-    argo_addr_t ring;
+    struct xen_argo_addr ring;
     uint16_t flags;
     uint16_t pad;
     uint32_t space_required;
     uint32_t max_message_size;
-} argo_ring_data_ent_t;
+} xen_argo_ring_data_ent_t;
 
-typedef struct argo_ring_data
+typedef struct xen_argo_ring_data
 {
-    uint64_t magic;
     uint32_t nent;
     uint32_t pad;
-    uint64_t reserved[4];
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-    argo_ring_data_ent_t data[];
+    struct xen_argo_ring_data_ent data[];
 #elif defined(__GNUC__)
-    argo_ring_data_ent_t data[0];
+    struct xen_argo_ring_data_ent data[0];
 #endif
-} argo_ring_data_t;
+} xen_argo_ring_data_t;
 
-struct argo_ring_message_header
+struct xen_argo_ring_message_header
 {
     uint32_t len;
-    argo_addr_t source;
+    struct xen_argo_addr source;
     uint32_t message_type;
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
     uint8_t data[];
@@ -157,40 +177,31 @@ struct argo_ring_message_header
 #endif
 };
 
-#define ARGO_SIGNAL_METHOD_EVTCHN      1
-#define ARGO_SIGNAL_METHOD_VIRQ        2
-#define ARGO_SIGNAL_METHOD_ISA_IRQ     3
-
-typedef struct argo_get_config
-{
-    uint32_t signal_method;
-    union
-    {
-        evtchn_port_t evtchn;
-        uint32_t virq;
-    } signal;
-    uint32_t reserved;
-} argo_get_config_t;
-#ifdef DEFINE_XEN_GUEST_HANDLE
-DEFINE_XEN_GUEST_HANDLE(argo_get_config_t);
-#endif
-
 /*
  * Hypercall operations
  */
 
 /*
- * ARGO_MESSAGE_OP_register_ring
+ * XEN_ARGO_OP_register_ring
  *
- * Register a ring using the indicated memory.
- * Also used to reregister an existing ring (eg. after resume from sleep).
+ * Register a ring using the guest-supplied memory pages.
+ * Also used to reregister an existing ring (eg. after resume from hibernate).
  *
- * arg1: XEN_GUEST_HANDLE(argo_ring_t)
- * arg2: XEN_GUEST_HANDLE(argo_pfn_t)
- * arg3: uint32_t npages
- * arg4: uint32_t flags
+ * The first argument struct indicates the port number for the ring to register
+ * and the partner domain, if any, that is to be allowed to send to the ring.
+ * A wildcard (XEN_ARGO_DOMID_ANY) may be supplied instead of a partner domid,
+ * and if the hypervisor has wildcard sender rings enabled, this will allow
+ * any domain (XSM notwithstanding) to send to the ring.
+ *
+ * The second argument is an array of guest frame numbers and the third argument
+ * indicates the size of the array. This operation only supports 4K-sized pages.
+ *
+ * arg1: XEN_GUEST_HANDLE(xen_argo_register_ring_t)
+ * arg2: XEN_GUEST_HANDLE(xen_argo_gfn_t)
+ * arg3: unsigned long npages
+ * arg4: unsigned long flags (32-bit value)
  */
-#define ARGO_MESSAGE_OP_register_ring     1
+#define XEN_ARGO_OP_register_ring     1
 
 /* Register op flags */
 /*
@@ -199,89 +210,80 @@ DEFINE_XEN_GUEST_HANDLE(argo_get_config_t);
  * If clear, reregistration occurs if the ring exists, with the new ring
  * taking the place of the old, preserving tx_ptr if it remains valid.
  */
-#define ARGO_REGISTER_FLAG_FAIL_EXIST  0x1
+#define XEN_ARGO_REGISTER_FLAG_FAIL_EXIST  0x1
 
-/* Mask for all defined flags */
-#define ARGO_REGISTER_FLAG_MASK ARGO_REGISTER_FLAG_FAIL_EXIST
+#ifdef __XEN__
+/* Mask for all defined flags. */
+#define XEN_ARGO_REGISTER_FLAG_MASK XEN_ARGO_REGISTER_FLAG_FAIL_EXIST
+#endif
 
 /*
- * ARGO_MESSAGE_OP_unregister_ring
+ * XEN_ARGO_OP_unregister_ring
  *
  * Unregister a previously-registered ring, ending communication.
  *
- * arg1: XEN_GUEST_HANDLE(argo_ring_t)
+ * arg1: XEN_GUEST_HANDLE(xen_argo_unregister_ring_t)
+ * arg2: NULL
+ * arg3: 0 (ZERO)
+ * arg4: 0 (ZERO)
  */
-#define ARGO_MESSAGE_OP_unregister_ring     2
+#define XEN_ARGO_OP_unregister_ring     2
 
 /*
- * ARGO_MESSAGE_OP_sendv
+ * XEN_ARGO_OP_sendv
  *
  * Send a list of buffers contained in iovs.
  *
- * For each iov entry, send iov_len bytes of iov_base to the destination ring.
- * To find the destination ring, Xen first looks for a most-specific match
- * with a ring with (id.addr == dst) and (id.partner == sending_domain) ;
+ * The send address struct specifies the source and destination addresses
+ * for the message being sent, which are used to find the destination ring:
+ * Xen first looks for a most-specific match with a registered ring with
+ *  (id.addr == dst) and (id.partner == sending_domain) ;
  * if that fails, it then looks for a wildcard match (aka multicast receiver)
  * where (id.addr == dst) and (id.partner == DOMID_ANY).
- * The source and destination addresses specify domain and port; source domain
- * is ignored, overridden by the hypervisor to indicate current domain.
- * The message type is a 32-bit data field available to communicate out-of-band
- * transport layer message context data from the sending domain to the receiver.
+ *
+ * For each iov entry, send iov_len bytes from iov_base to the destination ring.
  * If insufficient space exists in the destination ring, it will return -EAGAIN
  * and Xen will notify the caller when sufficient space becomes available.
  *
- * arg1: XEN_GUEST_HANDLE(argo_send_addr_t) source and dest addresses
- * arg2: XEN_GUEST_HANDLE(argo_iov_t) iovs
- * arg3: uint32_t niov
- * arg4: uint32_t message type
+ * The message type is a 32-bit data field available to communicate message
+ * context data (eg. kernel-to-kernel, rather than application layer).
+ *
+ * arg1: XEN_GUEST_HANDLE(xen_argo_send_addr_t) source and dest addresses
+ * arg2: XEN_GUEST_HANDLE(xen_argo_iov_t) iovs
+ * arg3: unsigned long niov
+ * arg4: unsigned long message type (32-bit value)
  */
-#define ARGO_MESSAGE_OP_sendv               5
+#define XEN_ARGO_OP_sendv               3
 
 /*
- * ARGO_MESSAGE_OP_notify
+ * XEN_ARGO_OP_notify
  *
  * Asks Xen for information about other rings in the system.
  *
- * ent->ring is the argo_addr_t of the ring you want information on.
- * Uses the same ring matching rules as ARGO_MESSAGE_OP_sendv.
+ * ent->ring is the xen_argo_addr_t of the ring you want information on.
+ * Uses the same ring matching rules as XEN_ARGO_OP_sendv.
  *
  * ent->space_required : if this field is not null then Xen will check
  * that there is space in the destination ring for this many bytes of payload.
- * If sufficient space is available, it will set ARGO_RING_DATA_F_SUFFICIENT
+ * If the ring is too small for the requested space_required, it will set the
+ * XEN_ARGO_RING_EMSGSIZE flag on return.
+ * If sufficient space is available, it will set XEN_ARGO_RING_SUFFICIENT
  * and CANCEL any pending notification for that ent->ring; otherwise it
  * will schedule a notification event and the flag will not be set.
  *
  * These flags are set by Xen when notify replies:
- * ARGO_RING_DATA_F_EMPTY       ring is empty
- * ARGO_RING_DATA_F_PENDING     notify event is pending - * don't rely on this *
- * ARGO_RING_DATA_F_SUFFICIENT  sufficient space for space_required is there
- * ARGO_RING_DATA_F_EXISTS      ring exists
+ * XEN_ARGO_RING_EXISTS     ring exists
+ * XEN_ARGO_RING_SHARED     ring is registered for wildcard partner
+ * XEN_ARGO_RING_EMPTY      ring is empty
+ * XEN_ARGO_RING_SUFFICIENT sufficient space for space_required is there
+ * XEN_ARGO_RING_EMSGSIZE   space_required is too large for the ring size
+ * XEN_ARGO_RING_EBUSY      too many domains waiting for available space signals
  *
- * arg1: XEN_GUEST_HANDLE(argo_ring_data_t) ring_data (may be NULL)
+ * arg1: XEN_GUEST_HANDLE(xen_argo_ring_data_t) ring_data (may be NULL)
  * arg2: NULL
  * arg3: 0 (ZERO)
  * arg4: 0 (ZERO)
  */
-#define ARGO_MESSAGE_OP_notify              4
-
-/*
- * ARGO_MESSAGE_OP_get_config
- *
- * Queries Xen for argo configuration values.
- *
- * Used by a guest to obtain the signal method in use for Argo notifications
- * and the event channel port or isa irq in use.
- *
- * arg1: XEN_GUEST_HANDLE(argo_get_config_t)
- * arg2: NULL
- * arg3: 0 (ZERO)
- * arg4: 0 (ZERO)
- */
-#define ARGO_MESSAGE_OP_get_config          6
-
-/* The maximum size of a guest message that may be sent on an Argo ring. */
-#define ARGO_MAX_MSG_SIZE ((ARGO_MAX_RING_SIZE) - \
-        (sizeof(struct argo_ring_message_header)) - \
-        ARGO_ROUNDUP(1))
+#define XEN_ARGO_OP_notify              4
 
 #endif

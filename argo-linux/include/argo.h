@@ -34,21 +34,21 @@
  */
 
 #include <xen/page.h>
-#include <xen/events.h>
 #include <asm/xen/hypercall.h>
 #include <xen/xen.h>
+#include <xen/events.h>
 
-#ifndef HYPERVISOR_argo_message_op
-#define __HYPERVISOR_argo_message_op               39
+#ifndef HYPERVISOR_argo_op
+#define __HYPERVISOR_argo_op               39
 
 static inline int __must_check
-HYPERVISOR_argo_message_op(int cmd, void *arg1, void *arg2, uint32_t arg3,
-                           uint32_t arg4)
+HYPERVISOR_argo_op(int cmd, void *arg1, void *arg2, uint32_t arg3,
+                   uint32_t arg4)
 {
     int ret;
 
     stac();
-    ret = _hypercall5(int, argo_message_op, cmd, arg1, arg2, arg3, arg4);
+    ret = _hypercall5(int, argo_op, cmd, arg1, arg2, arg3, arg4);
     clac();
 
     return ret;
