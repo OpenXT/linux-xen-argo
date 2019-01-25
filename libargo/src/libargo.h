@@ -47,18 +47,18 @@ struct sockaddr_xenargo {
 
 int argo_socket(int type);
 int argo_close(int fd);
-int argo_bind(int fd, argo_addr_t *addr, domid_t partner);
-int argo_connect(int fd, argo_addr_t *peer);
+int argo_bind(int fd, xen_argo_addr_t *addr, domid_t partner_id);
+int argo_connect(int fd, xen_argo_addr_t *peer);
 int argo_listen(int fd, int backlog);
-int argo_accept(int fd, argo_addr_t *peer);
+int argo_accept(int fd, xen_argo_addr_t *peer);
 ssize_t argo_send(int fd, const void *buf, size_t len, int flags);
 ssize_t argo_sendmsg(int fd, const struct msghdr *msg, int flags);
-ssize_t argo_sendto(int fd, const void *buf, size_t len, int flags, argo_addr_t *dest_addr);
+ssize_t argo_sendto(int fd, const void *buf, size_t len, int flags, xen_argo_addr_t *dest_addr);
 ssize_t argo_recv(int fd, void *buf, size_t len, int flags);
 ssize_t argo_recvmsg(int fd, struct msghdr *msg, int flags);
-ssize_t argo_recvfrom(int fd, void *buf, size_t len, int flags, argo_addr_t *src_addr);
-int argo_getsockname(int fd, argo_addr_t *addr, domid_t *partner);
-int argo_getpeername(int fd, argo_addr_t *addr);
+ssize_t argo_recvfrom(int fd, void *buf, size_t len, int flags, xen_argo_addr_t *src_addr);
+int argo_getsockname(int fd, xen_argo_addr_t *out_addr, domid_t *out_partner_id);
+int argo_getpeername(int fd, xen_argo_addr_t *out_addr);
 int argo_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
 
 # ifdef __cplusplus

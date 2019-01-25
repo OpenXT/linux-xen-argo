@@ -53,8 +53,8 @@ int WaitForIncomingConnection(int listenPort, int domid)
     int keepGoing = 1;
     int returnValue = 0;
     int svrSocket = 0;
-    argo_addr_t addr;
-    argo_addr_t peer;
+    xen_argo_addr_t addr;
+    xen_argo_addr_t peer;
     printf("%s begin.\n", __FUNCTION__);
 
     svrSocket = argo_socket (SOCK_STREAM);
@@ -64,7 +64,7 @@ int WaitForIncomingConnection(int listenPort, int domid)
     }
     else
     {
-	addr.domain = ARGO_DOMID_ANY;
+	addr.domain = XEN_ARGO_DOMID_ANY;
 	addr.port = listenPort;
 
 	/*We need the special argo version of this call to bind for one domain only*/
@@ -101,7 +101,7 @@ int ConnectionToRemote(int remotePort, int domid)
 {
     int returnValue = 0;
     int connSocket = 0;
-    argo_addr_t addr;
+    xen_argo_addr_t addr;
     printf("%s begin.\n", __FUNCTION__);
 
     connSocket = argo_socket (SOCK_STREAM);

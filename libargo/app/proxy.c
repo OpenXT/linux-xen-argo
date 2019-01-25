@@ -133,7 +133,7 @@ proxy (int afd, int port)
 
   sxl.sxenargo_family = AF_XENARGO;
   sxl.sxenargo_port = 0;
-  sxl.sxenargo_domain = ARGO_DOMID_ANY;
+  sxl.sxenargo_domain = XEN_ARGO_DOMID_ANY;
 
   if (bind (xfd, (struct sockaddr *) &sxl, sizeof (sxl)))
     die ("bind(xen_socket,....);");

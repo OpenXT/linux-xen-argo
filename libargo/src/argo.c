@@ -127,16 +127,17 @@ argo_close (int fd)
 
 
 int
-argo_bind (int fd, argo_addr_t * addr, domid_t partner)
+argo_bind (int fd, xen_argo_addr_t * addr, domid_t partner_id)
 {
   struct argo_ring_id id;
   int ret;
 
   if (addr && !addr->domain_id)
-      addr->domain_id = ARGO_DOMID_ANY;
+      addr->domain_id = XEN_ARGO_DOMID_ANY;
 
-  id.addr = *addr;
-  id.partner = partner;
+  id.domain_id = addr->domain_id;
+  id.aport = addr->aport;
+  id.partner_id = partner_id;
 
   //no need for mlock, id is copied into kernel memory
   return argo_ioctl (fd, ARGOIOCBIND, &id);
@@ -145,7 +146,7 @@ argo_bind (int fd, argo_addr_t * addr, domid_t partner)
 
 
 int
-argo_connect (int fd, argo_addr_t * peer)
+argo_connect (int fd, xen_argo_addr_t * peer)
 {
   //no need for mlock, peer is copied into kernel memory
   return argo_ioctl (fd, ARGOIOCCONNECT, peer);
@@ -159,7 +160,7 @@ argo_listen (int fd, int backlog)
 }
 
 int
-argo_accept (int fd, argo_addr_t * peer)
+argo_accept (int fd, xen_argo_addr_t * peer)
 {
   //no need for mlock, peer accessed from kernel
   return argo_ioctl (fd, ARGOIOCACCEPT, peer);
@@ -199,7 +200,7 @@ argo_sendmsg (int fd, const struct msghdr * msg, int flags)
 
   op.flags = flags;
 
-  op.addr = (argo_addr_t *) msg->msg_name;
+  op.addr = (xen_argo_addr_t *) msg->msg_name;
 
   op.len = count_iov (msg->msg_iov, msg->msg_iovlen);
   op.buf = malloc (op.len);
@@ -214,7 +215,7 @@ argo_sendmsg (int fd, const struct msghdr * msg, int flags)
 #ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
   if (op.addr)
-    mlock (op.addr, sizeof (argo_addr_t));
+    mlock (op.addr, sizeof (xen_argo_addr_t));
 #endif
 
   //send is all in kernel
@@ -222,7 +223,7 @@ argo_sendmsg (int fd, const struct msghdr * msg, int flags)
 
 #ifdef I_AM_A_BROKEN_WEENIE
   if (op.addr)
-    munlock (op.addr, sizeof (argo_addr_t));
+    munlock (op.addr, sizeof (xen_argo_addr_t));
   munlock (op.buf, op.len);
 #endif
 
@@ -233,7 +234,7 @@ argo_sendmsg (int fd, const struct msghdr * msg, int flags)
 
 ssize_t
 argo_sendto (int fd, const void *buf, size_t len, int flags,
-            argo_addr_t * dest_addr)
+            xen_argo_addr_t * dest_addr)
 {
   struct argo_dev op;
   ssize_t ret;
@@ -246,14 +247,14 @@ argo_sendto (int fd, const void *buf, size_t len, int flags,
 #ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
   if (op.addr)
-    mlock (op.addr, sizeof (argo_addr_t));
+    mlock (op.addr, sizeof (xen_argo_addr_t));
 #endif
 
   ret = argo_ioctl (fd, ARGOIOCSEND, &op);
 
 #ifdef I_AM_A_BROKEN_WEENIE
   if (op.addr)
-    munlock (op.addr, sizeof (argo_addr_t));
+    munlock (op.addr, sizeof (xen_argo_addr_t));
   munlock (op.buf, op.len);
 #endif
 
@@ -286,7 +287,7 @@ argo_recvmsg (int fd, struct msghdr * msg, int flags)
 
   op.flags = flags;
 
-  op.addr = (argo_addr_t *) msg->msg_name;
+  op.addr = (xen_argo_addr_t *) msg->msg_name;
 
   op.len = count_iov (msg->msg_iov, msg->msg_iovlen);
   op.buf = malloc (op.len);
@@ -309,7 +310,7 @@ argo_recvmsg (int fd, struct msghdr * msg, int flags)
 
 
 ssize_t
-argo_recvfrom (int fd, void *buf, size_t len, int flags, argo_addr_t * src_addr)
+argo_recvfrom (int fd, void *buf, size_t len, int flags, xen_argo_addr_t * src_addr)
 {
   struct argo_dev op;
   ssize_t ret;
@@ -325,7 +326,7 @@ argo_recvfrom (int fd, void *buf, size_t len, int flags, argo_addr_t * src_addr)
 
 
 int
-argo_getsockname (int fd, argo_addr_t * addr, domid_t * partner)
+argo_getsockname (int fd, xen_argo_addr_t *out_addr, domid_t * out_partner_id)
 {
   struct argo_ring_id id;
   int ret;
@@ -333,21 +334,25 @@ argo_getsockname (int fd, argo_addr_t * addr, domid_t * partner)
   //all in kernel
   ret = argo_ioctl (fd, ARGOIOCGETSOCKNAME, &id);
 
-  if (partner)
-    *partner = id.partner;
+  if (out_partner_id)
+    *out_partner_id = id.partner_id;
 
-  if (addr)
-    *addr = id.addr;
+  if (out_addr)
+  {
+    out_addr->aport = id.aport;
+    out_addr->domain_id = id.domain_id;
+    out_addr->pad = 0;
+  }
 
   return ret;
 }
 
 
 int
-argo_getpeername (int fd, argo_addr_t * addr)
+argo_getpeername (int fd, xen_argo_addr_t *out_addr)
 {
   //all in kernel
-  return argo_ioctl (fd, ARGOIOCGETPEERNAME, addr);
+  return argo_ioctl (fd, ARGOIOCGETPEERNAME, out_addr);
 }
 
 int

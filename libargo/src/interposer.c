@@ -218,7 +218,7 @@ INTERPOSE (close, int, int fd)
 INTERPOSE (bind, int, int sockfd, const struct sockaddr * addr,
            socklen_t addrlen)
 {
-  argo_addr_t argoa;
+  xen_argo_addr_t argoa;
 
   CHECK_INTERPOSE (bind);
 
@@ -234,7 +234,7 @@ INTERPOSE (bind, int, int sockfd, const struct sockaddr * addr,
     return -EINVAL;
 
   return argo_bind (sockfd, &argoa,
-                   getenv ("ARGO_ACCEPT_DOM0_ONLY") ? 0 : ARGO_DOMID_ANY);
+                   getenv ("ARGO_ACCEPT_DOM0_ONLY") ? 0 : XEN_ARGO_DOMID_ANY);
 }
 
 
@@ -242,7 +242,7 @@ INTERPOSE (bind, int, int sockfd, const struct sockaddr * addr,
 INTERPOSE (connect, int, int sockfd, const struct sockaddr * addr,
            socklen_t addrlen)
 {
-  argo_addr_t peer, me;
+  xen_argo_addr_t peer, me;
   char *val, *end;
   int addend, ret;
 
@@ -261,16 +261,17 @@ INTERPOSE (connect, int, int sockfd, const struct sockaddr * addr,
     /* Sanitize the addend */
     if (end == NULL || *end != '\0' || addend < 0)
       return -EINVAL;
-    me.domain_id = ARGO_DOMID_ANY;
-    me.port = peer.port + addend;
-    DEBUG_PRINTF ("BINDING CLIENT TO port %d\n", (int) me.port);
+    me.domain_id = XEN_ARGO_DOMID_ANY;
+    me.aport = peer.aport + addend;
+    DEBUG_PRINTF ("BINDING CLIENT TO aport %d\n", (int) me.aport);
     DEBUG_PRINTF ("  AND SET %d AS THE PARTNER\n", (int) peer.domain_id);
     ret = argo_bind(sockfd, &me, peer.domain_id);
     if (ret)
       return ret;
   }
 
-  DEBUG_PRINTF ("CONNECTING TO %d:%d\n", (int) peer.domain_id, (int) peer.port);
+  DEBUG_PRINTF ("CONNECTING TO %d:%d\n", (int) peer.domain_id,
+                (int) peer.aport);
 
   return argo_connect (sockfd, &peer);
 }
@@ -290,7 +291,7 @@ INTERPOSE (listen, int, int sockfd, int backlog)
 INTERPOSE (accept, int, int sockfd, struct sockaddr * addr,
            socklen_t * addrlen)
 {
-  argo_addr_t peer;
+  xen_argo_addr_t peer;
   int ret;
 
   CHECK_INTERPOSE (accept);
@@ -330,7 +331,7 @@ INTERPOSE (send, ssize_t, int sockfd, const void *buf, size_t len, int flags)
 INTERPOSE (sendmsg, ssize_t, int sockfd, const struct msghdr * msg, int flags)
 {
   struct msghdr argomsg;
-  argo_addr_t argoa;
+  xen_argo_addr_t argoa;
   CHECK_INTERPOSE (sendmsg);
 
   if (!is_our_fd (sockfd))
@@ -353,7 +354,7 @@ INTERPOSE (sendmsg, ssize_t, int sockfd, const struct msghdr * msg, int flags)
 INTERPOSE (sendto, ssize_t, int sockfd, const void *buf, size_t len,
            int flags, const struct sockaddr * dest_addr, socklen_t addrlen)
 {
-  argo_addr_t peer;
+  xen_argo_addr_t peer;
 
   CHECK_INTERPOSE (sendto);
 
@@ -380,7 +381,7 @@ INTERPOSE (recv, ssize_t, int sockfd, void *buf, size_t len, int flags)
 
 INTERPOSE (recvmsg, ssize_t, int sockfd, struct msghdr * msg, int flags)
 {
-  struct argo_addr peer;
+  struct xen_argo_addr peer;
   struct msghdr my_msg = *msg;
   ssize_t ret;
 
@@ -420,7 +421,7 @@ INTERPOSE (recvfrom, ssize_t, int sockfd, void *buf, size_t len,
            int flags, struct sockaddr * src_addr, socklen_t * addrlen)
 {
   ssize_t ret;
-  argo_addr_t peer = { 0 };
+  xen_argo_addr_t peer = { 0 };
 
   CHECK_INTERPOSE (recvfrom);
 
@@ -446,7 +447,7 @@ INTERPOSE (getsockname, int, int sockfd, struct sockaddr * addr,
            socklen_t * addrlen)
 {
   ssize_t ret;
-  argo_addr_t name;
+  xen_argo_addr_t name;
 
   CHECK_INTERPOSE (getsockname);
 
@@ -472,7 +473,7 @@ INTERPOSE (getpeername, int, int sockfd, struct sockaddr * addr,
            socklen_t * addrlen)
 {
   ssize_t ret;
-  argo_addr_t ring_addr = { 0 };
+  xen_argo_addr_t ring_addr = { 0 };
 
   CHECK_INTERPOSE (getpeername);
 

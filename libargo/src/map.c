@@ -35,16 +35,16 @@ unmap_port (uint32_t argo_port)
 
 void
 argo_map_argoa_to_sin (struct sockaddr *addr, socklen_t * addrlen,
-                     argo_addr_t * peer)
+                     xen_argo_addr_t * peer)
 {
   struct sockaddr_in sin;
 
   memset (&sin, 0, sizeof (sin));
 
   sin.sin_family = AF_INET;
-  sin.sin_port = unmap_port (htons (peer->port));
+  sin.sin_port = unmap_port (htons (peer->aport));
 
-  if (peer->domain_id == ARGO_DOMID_ANY)
+  if (peer->domain_id == XEN_ARGO_DOMID_ANY)
     {
       sin.sin_addr.s_addr = INADDR_ANY;
     }
@@ -63,7 +63,7 @@ argo_map_argoa_to_sin (struct sockaddr *addr, socklen_t * addrlen,
 
 
 int
-argo_map_sin_to_argoa (argo_addr_t * peer, const struct sockaddr *addr,
+argo_map_sin_to_argoa (xen_argo_addr_t * peer, const struct sockaddr *addr,
                      int addrlen)
 {
   const struct sockaddr_in *sin = (const struct sockaddr_in *) addr;
@@ -76,28 +76,28 @@ argo_map_sin_to_argoa (argo_addr_t * peer, const struct sockaddr *addr,
 
   if (sin->sin_addr.s_addr == INADDR_ANY)
     {
-      peer->domain_id = ARGO_DOMID_ANY;
+      peer->domain_id = XEN_ARGO_DOMID_ANY;
     }
   else
     {
       peer->domain_id = ntohl (sin->sin_addr.s_addr) & 0xffff;
     }
 
-  peer->port = map_port (ntohs (sin->sin_port));
+  peer->aport = map_port (ntohs (sin->sin_port));
 
   return 0;
 }
 
 void
 argo_map_argoa_to_sxenargo (struct sockaddr *addr, socklen_t * addrlen,
-                         argo_addr_t * peer)
+                         xen_argo_addr_t * peer)
 {
   struct sockaddr_xenargo sxenargo;
 
   memset (&sxenargo, 0, sizeof (sxenargo));
 
   sxenargo.sxenargo_family = AF_XENARGO;
-  sxenargo.sxenargo_port = peer->port;
+  sxenargo.sxenargo_port = peer->aport;
   sxenargo.sxenargo_domain = peer->domain_id;
 
   if (addr && addrlen)
@@ -109,7 +109,7 @@ argo_map_argoa_to_sxenargo (struct sockaddr *addr, socklen_t * addrlen,
 }
 
 int
-argo_map_sxenargo_to_argoa (argo_addr_t * peer,
+argo_map_sxenargo_to_argoa (xen_argo_addr_t * peer,
                          const struct sockaddr *addr, int addrlen)
 {
   const struct sockaddr_xenargo *sxenargo =
@@ -125,13 +125,13 @@ argo_map_sxenargo_to_argoa (argo_addr_t * peer,
     return -EINVAL;
 
   peer->domain_id = sxenargo->sxenargo_domain;
-  peer->port = sxenargo->sxenargo_port;
+  peer->aport = sxenargo->sxenargo_port;
 
   return 0;
 }
 
 int
-argo_map_sa_to_argoa (argo_addr_t * peer,
+argo_map_sa_to_argoa (xen_argo_addr_t * peer,
                     const struct sockaddr *addr, int addrlen)
 {
   switch (addr->sa_family)

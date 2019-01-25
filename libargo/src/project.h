@@ -70,14 +70,14 @@
 # include "libargo.h"
 
 void argo_map_argoa_to_sin (struct sockaddr *addr, socklen_t *addrlen,
-		argo_addr_t *peer);
-int argo_map_sin_to_argoa (argo_addr_t *peer, const struct sockaddr *addr,
+		xen_argo_addr_t *peer);
+int argo_map_sin_to_argoa (xen_argo_addr_t *peer, const struct sockaddr *addr,
 		int addrlen);
 void argo_map_argoa_to_sxenargo (struct sockaddr *addr, socklen_t *addrlen,
-		argo_addr_t *peer);
-int argo_map_sxenargo_to_argoa (argo_addr_t *peer, const struct sockaddr *addr,
+		xen_argo_addr_t *peer);
+int argo_map_sxenargo_to_argoa (xen_argo_addr_t *peer, const struct sockaddr *addr,
 		int addrlen);
-int argo_map_sa_to_argoa (argo_addr_t *peer, const struct sockaddr *addr,
+int argo_map_sa_to_argoa (xen_argo_addr_t *peer, const struct sockaddr *addr,
 		int addrlen);
 
 
