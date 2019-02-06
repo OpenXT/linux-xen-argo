@@ -37,17 +37,13 @@
 
 #define XEN_ARGO_DOMID_ANY       DOMID_INVALID
 
-/*
- * The maximum size of an Argo ring is defined to be: 16MB
- *  -- which is 0x1000000 bytes.
- * A byte index into the ring is at most 24 bits.
- */
+/* The maximum size of an Argo ring is defined to be: 16MB (0x1000000 bytes). */
 #define XEN_ARGO_MAX_RING_SIZE  (0x1000000ULL)
 
 /* Fixed-width type for "argo port" number. Nothing to do with evtchns. */
 typedef uint32_t xen_argo_port_t;
 
-/* gfn type: 64-bit on all architectures to aid avoiding a compat ABI */
+/* gfn type: 64-bit fixed-width on all architectures */
 typedef uint64_t xen_argo_gfn_t;
 
 /*
@@ -56,25 +52,18 @@ typedef uint64_t xen_argo_gfn_t;
  * an array of xen_argo_iov_t structs on the hypervisor stack, so could cause
  * stack overflow if the value is too large.
  * The Linux Argo driver never passes more than two iovs.
- *
- * This value should also not exceed 128 to ensure that the total amount of data
- * posted in a single Argo sendv operation cannot exceed 2^31 bytes, to reduce
- * risk of integer overflow defects:
- * Each argo iov can hold ~ 2^24 bytes, so XEN_ARGO_MAXIOV <= 2^(31-24),
- * ie. keep XEN_ARGO_MAXIOV <= 128.
 */
 #define XEN_ARGO_MAXIOV          8U
 
-#ifdef DEFINE_XEN_GUEST_HANDLE
-DEFINE_XEN_GUEST_HANDLE(uint8_t);
-#endif
-
 typedef struct xen_argo_iov
 {
-#ifdef XEN_GUEST_HANDLE_64
-    XEN_GUEST_HANDLE_64(uint8_t) iov_hnd;
+#ifdef XEN_GUEST_HANDLE
+    XEN_GUEST_HANDLE(uint8) iov_hnd;
 #else
-    uint64_t iov_hnd;
+    uint8_t *iov_hnd;
+#ifdef CONFIG_ARM /* FIXME: 32-bit ARM only */
+    uint32_t pad2;
+#endif
 #endif
     uint32_t iov_len;
     uint32_t pad;

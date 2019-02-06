@@ -646,7 +646,7 @@ summary_ring (struct ring *r)
 {
     printk(KERN_ERR "ring at %p:\n", r);
 
-    printk(KERN_ERR " xen_argo_gfn_array_t at %p for %d:\n",
+    printk(KERN_ERR " xen_pfn_array_t at %p for %d:\n",
            r->gfn_array, r->npfns);
 
     printk(KERN_ERR " xen_argo_ring_t at %p:\n", r->ring);
@@ -688,6 +688,8 @@ H_argo_sendv(xen_argo_addr_t *s, xen_argo_addr_t *d,
     xen_argo_send_addr_t send;
     send.dst = *d;
     send.src = *s;
+    send.src.pad = 0;
+    send.dst.pad = 0;
     return HYPERVISOR_argo_op(XEN_ARGO_OP_sendv,
                               &send, (void *)iovs, niov, protocol);
 }
@@ -802,7 +804,11 @@ refresh_gfn_array(struct ring *r)
 
     for ( i = 0; i < r->npfns; ++i )
     {
+#if defined(CONFIG_X86_64) || defined(CONFIG_X86_32)
         r->gfn_array[i] = pfn_to_mfn(vmalloc_to_pfn(b));
+#else
+        r->gfn_array[i] = pfn_to_gfn(vmalloc_to_pfn(b));
+#endif
         b += PAGE_SIZE;
     }
 }
@@ -1227,13 +1233,9 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     argo_spin_lock_irqsave (&pending_xmit_lock, flags);
     DEBUG_APPLE;
 
-    /* HACK to fix sign extension */
-    if ( sizeof(void *) == sizeof(uint32_t) )
-        iov.iov_hnd = (uint64_t) (uint32_t) (uintptr_t) buf;
-            /* FIXME: need double-check the above is correct on 32-bit */
-#ifdef CONFIG_X86_64
-    else
-        iov.iov_hnd = (uint64_t) (uintptr_t) buf;
+    iov.iov_hnd = buf;
+#ifdef CONFIG_ARM
+    iov.pad2 = 0;
 #endif
 
     iov.iov_len = len;
@@ -1475,12 +1477,9 @@ argo_notify(void)
                         break;
                     }
 
-                    /* HACK to fix sign extension */
-                    if ( sizeof(void *) == sizeof(uint32_t) )
-                        iov.iov_hnd = (uint64_t) (uint32_t) (uintptr_t) p->data;
-#ifdef CONFIG_X86_64
-                    else
-                        iov.iov_hnd = (uint64_t) (uintptr_t) p->data;
+                    iov.iov_hnd = p->data;
+#ifdef CONFIG_ARM
+                    iov.pad2 = 0;
 #endif
                     iov.iov_len = p->len;
                     iov.pad = 0;
@@ -1998,14 +1997,10 @@ argo_try_send_sponsor(struct argo_private *p, xen_argo_addr_t *dest,
     xen_argo_iov_t iov;
     xen_argo_addr_t addr;
 
-    /* HACK to fix sign extension */
-    if ( sizeof(void *) == sizeof(uint32_t) )
-        iov.iov_hnd = (uint64_t) (uint32_t) (uintptr_t) buf;
-#ifdef CONFIG_X86_64
-    else
-        iov.iov_hnd = (uint64_t) (uintptr_t) buf;
+    iov.iov_hnd = buf;
+#ifdef CONFIG_ARM
+    iov.pad2 = 0;
 #endif
-
     iov.iov_len = len;
     iov.pad = 0;
 
@@ -2062,7 +2057,7 @@ argo_try_sendv_sponsor(struct argo_private *p,
     DEBUG_APPLE;
 
 #ifdef ARGO_DEBUG
-    printk (KERN_ERR "sendv returned %ld\n", ret);
+    printk (KERN_ERR "sendv returned %d\n", ret);
 #endif
 
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
@@ -2165,12 +2160,9 @@ argo_sendto_from_sponsor(struct argo_private *p,
             xen_argo_iov_t iov;
             xen_argo_addr_t addr;
 
-            /* HACK to fix sign extension */
-            if ( sizeof(void *) == sizeof(uint32_t) )
-                iov.iov_hnd = (uint64_t) (uint32_t) (uintptr_t) buf;
-#ifdef CONFIG_X86_64
-            else
-                iov.iov_hnd = (uint64_t) (uintptr_t) buf;
+            iov.iov_hnd = buf;
+#ifdef CONFIG_ARM
+            iov.pad2 = 0;
 #endif
             iov.iov_len = len;
             iov.pad = 0;
@@ -2426,7 +2418,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
 
     DEBUG_APPLE;
 #ifdef ARGO_DEBUG
-    printk("FISHSOUP argo_recvfrom_dgram %p %ld %d %d \n", buf, len,
+    printk("FISHSOUP argo_recvfrom_dgram %p %u %d %d \n", buf, len,
            nonblock, peek);
 #endif
 
@@ -2611,7 +2603,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
             ret = copy_to_user(buf, &pending->data[pending->data_ptr], to_copy);
             if ( ret )
-                printk(KERN_ERR "ARGO - copy_to_user failed: buf: %p other: %p to_copy: %u pending %p data_ptr %u data: %p\n",
+                printk(KERN_ERR "ARGO - copy_to_user failed: buf: %p other: %p to_copy: %lu pending %p data_ptr %lu data: %p\n",
                     buf, &pending->data[pending->data_ptr], to_copy, pending,
                     pending->data_ptr, pending->data);
                 /* FIXME: error exit action here? */
@@ -2629,7 +2621,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                 list_del (&pending->node);
 
 #ifdef ARGO_DEBUG
-                printk(KERN_ERR "OP p=%p k=%ld s=%d c=%d\n", pending,
+                printk(KERN_ERR "OP p=%p k=%d s=%d c=%d\n", pending,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
 #endif
@@ -2745,20 +2737,12 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         sh.flags = 0;
         sh.conid = p->conid;
 
-        /* FIXME: hmmm... */
-        if ( sizeof(void *) == sizeof(uint32_t) )
-        {                       //HACK to fix sign extension
-            iovs[0].iov_hnd = (uint64_t) (uint32_t) (uintptr_t) (void *) &sh;
-            iovs[1].iov_hnd = (uint64_t) (uint32_t) (uintptr_t) (void *) buf;
-        }
-        else
-        {
-#ifdef CONFIG_X86_64
-            iovs[0].iov_hnd = (uint64_t) (uintptr_t) (void *) &sh;
-            iovs[1].iov_hnd = (uint64_t) (uintptr_t) (void *) buf;
+        iovs[0].iov_hnd = (void *) &sh;
+        iovs[1].iov_hnd = (void *) buf;
+#ifdef CONFIG_ARM
+        iovs[0].pad2 = 0;
+        iovs[1].pad2 = 0;
 #endif
-        }
-
         iovs[0].iov_len = sizeof(sh);
         iovs[1].iov_len = to_send;
         iovs[0].pad = 0;
@@ -2808,7 +2792,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
     DEBUG_APPLE;
     DEBUG_APPLE;
 #ifdef ARGO_DEBUG
-    printk(KERN_ERR "avacado count=%ld\n", count);
+    printk(KERN_ERR "avacado count=%d\n", count);
 #endif
     return count;
 }
@@ -3078,7 +3062,7 @@ allocate_fd_with_private (void *private)
     ind->i_uid = current_fsuid();
     ind->i_gid = current_fsgid();
     d_instantiate(path.dentry, ind);
-
+ 
     path.mnt = mntget(argo_mnt);
 
     DEBUG_APPLE;
@@ -3091,7 +3075,7 @@ allocate_fd_with_private (void *private)
 
     f->private_data = private;
     f->f_flags = O_RDWR;
-
+ 
     fd_install (fd, f);
 
     return fd;
@@ -3296,7 +3280,7 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
         return -EFAULT;
 
 #ifdef ARGO_DEBUG
-    printk(KERN_ERR "argo_sendto buf:%p len:%ld nonblock:%d\n", buf, len, nonblock);
+    printk(KERN_ERR "argo_sendto buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
 #endif
 
     if ( flags & MSG_DONTWAIT )
@@ -3380,7 +3364,7 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
     ssize_t rc = 0;
 
 #ifdef ARGO_DEBUG
-    printk(KERN_ERR "argo_recvfrom buff:%p len:%ld nonblock:%d\n",
+    printk(KERN_ERR "argo_recvfrom buff:%p len:%d nonblock:%d\n",
            buf, len, nonblock);
 #endif
  
@@ -3835,7 +3819,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         }
         break;
         default:
-            printk(KERN_ERR "unknown ioctl: cmd=%x ARGOIOCACCEPT=%x\n", cmd,
+            printk(KERN_ERR "unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd,
                    ARGOIOCACCEPT);
             DEBUG_BANANA;
     }

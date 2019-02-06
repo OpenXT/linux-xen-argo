@@ -1,4 +1,6 @@
-obj-m += argo.o
+obj-m += xen-argo.o
+
+xen-argo-y := argo-module.o
+xen-argo-$(CONFIG_ARM) += argo-hypercall.o
 
 ccflags-y := -I$(src)/include
-#ccflags-$(CONFIG_X86_32) += -fomit-frame-pointer
