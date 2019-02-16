@@ -29,7 +29,7 @@ static char rcsid[] = "$Id:$";
  * $Log:$
  */
 
-#include "libv4v.h"
+#include "libargo.h"
 
 int main(int argc,char *argv[])
 {

@@ -1,11 +1,12 @@
 /******************************************************************************
- * drivers/xen/hypercall.h
+ * drivers/xen/argo.h
  *
- * V4V interdomain communication driver.
+ * Argo hypervisor-mediated data exchange interdomain communication driver.
  *
  * Copyright (c) 2009 Ross Philipson
  * Copyright (c) 2009 James McKenzie
  * Copyright (c) 2009 Citrix Systems, Inc.
+ * Modifications by Christopher Clark are Copyright (c) 2018 BAE Systems
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version 2
@@ -32,48 +33,28 @@
  * IN THE SOFTWARE.
  */
 
-
-#ifndef XC_KERNEL
-
 #include <xen/page.h>
 #include <xen/events.h>
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38) )
 #include <asm/xen/hypercall.h>
 #include <xen/xen.h>
-#else
 
-#include <asm/xen/hypervisor.h>
-#ifndef xen_domain
-#include <xen/xen.h>
-#endif
+#ifndef HYPERVISOR_argo_message_op
+#define __HYPERVISOR_argo_message_op               39
 
-#endif /* 2.6.38 */
-
-#ifndef _hypercall6
-#include <xen/hypercall6.h>
-#endif
-#endif /* XC_KERNEL */
-
-#ifndef HYPERVISOR_v4v_op
-#define __HYPERVISOR_v4v_op               39
 static inline int __must_check
-HYPERVISOR_v4v_op(int cmd, void *arg1, void *arg2, void *arg3,
-			uint32_t arg4, uint32_t arg5)
+HYPERVISOR_argo_message_op(int cmd, void *arg1, void *arg2, uint32_t arg3,
+                           uint32_t arg4)
 {
-	int ret;
+    int ret;
 
-	stac();
-	ret = _hypercall6(int, v4v_op, cmd, arg1, arg2, arg3, arg4, arg5);
-	clac();
+    stac();
+    ret = _hypercall5(int, argo_message_op, cmd, arg1, arg2, arg3, arg4);
+    clac();
 
-	return ret;
+    return ret;
 }
 #endif
 
-#ifndef VIRQ_V4V
-#define VIRQ_V4V        11 /* G. (DOM0) V4V event */
+#ifndef VIRQ_ARGO
+#define VIRQ_ARGO       11 /* G. (DOM0) ARGO interdomain communication */
 #endif
-
-#undef DOMID_INVALID
-#define DOMID_INVALID (0x7FF4U)
-

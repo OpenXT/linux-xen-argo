@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010 Citrix Systems, Inc.
+ * Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,15 +27,15 @@ map_port (uint16_t sin_port)
 }
 
 static uint16_t
-unmap_port (uint32_t v4v_port)
+unmap_port (uint32_t argo_port)
 {
-  return (uint16_t) v4v_port;
+  return (uint16_t) argo_port;
 }
 
 
 void
-v4v_map_v4va_to_sin (struct sockaddr *addr, socklen_t * addrlen,
-                     v4v_addr_t * peer)
+argo_map_argoa_to_sin (struct sockaddr *addr, socklen_t * addrlen,
+                     argo_addr_t * peer)
 {
   struct sockaddr_in sin;
 
@@ -43,13 +44,13 @@ v4v_map_v4va_to_sin (struct sockaddr *addr, socklen_t * addrlen,
   sin.sin_family = AF_INET;
   sin.sin_port = unmap_port (htons (peer->port));
 
-  if (peer->domain == V4V_DOMID_NONE)
+  if (peer->domain_id == ARGO_DOMID_ANY)
     {
       sin.sin_addr.s_addr = INADDR_ANY;
     }
   else
     {
-      sin.sin_addr.s_addr = htonl ((uint32_t) peer->domain | 0x1000000);
+      sin.sin_addr.s_addr = htonl ((uint32_t) peer->domain_id | 0x1000000);
     }
 
 
@@ -62,7 +63,7 @@ v4v_map_v4va_to_sin (struct sockaddr *addr, socklen_t * addrlen,
 
 
 int
-v4v_map_sin_to_v4va (v4v_addr_t * peer, const struct sockaddr *addr,
+argo_map_sin_to_argoa (argo_addr_t * peer, const struct sockaddr *addr,
                      int addrlen)
 {
   const struct sockaddr_in *sin = (const struct sockaddr_in *) addr;
@@ -75,11 +76,11 @@ v4v_map_sin_to_v4va (v4v_addr_t * peer, const struct sockaddr *addr,
 
   if (sin->sin_addr.s_addr == INADDR_ANY)
     {
-      peer->domain = V4V_DOMID_NONE;
+      peer->domain_id = ARGO_DOMID_ANY;
     }
   else
     {
-      peer->domain = ntohl (sin->sin_addr.s_addr) & 0xffff;
+      peer->domain_id = ntohl (sin->sin_addr.s_addr) & 0xffff;
     }
 
   peer->port = map_port (ntohs (sin->sin_port));
@@ -88,57 +89,57 @@ v4v_map_sin_to_v4va (v4v_addr_t * peer, const struct sockaddr *addr,
 }
 
 void
-v4v_map_v4va_to_sxenv4v (struct sockaddr *addr, socklen_t * addrlen,
-                         v4v_addr_t * peer)
+argo_map_argoa_to_sxenargo (struct sockaddr *addr, socklen_t * addrlen,
+                         argo_addr_t * peer)
 {
-  struct sockaddr_xenv4v sxenv4v;
+  struct sockaddr_xenargo sxenargo;
 
-  memset (&sxenv4v, 0, sizeof (sxenv4v));
+  memset (&sxenargo, 0, sizeof (sxenargo));
 
-  sxenv4v.sxenv4v_family = AF_XENV4V;
-  sxenv4v.sxenv4v_port = peer->port;
-  sxenv4v.sxenv4v_domain = peer->domain;
+  sxenargo.sxenargo_family = AF_XENARGO;
+  sxenargo.sxenargo_port = peer->port;
+  sxenargo.sxenargo_domain = peer->domain_id;
 
   if (addr && addrlen)
-    memcpy (addr, &sxenv4v,
-            (*addrlen < sizeof (sxenv4v)) ? *addrlen : sizeof (sxenv4v));
+    memcpy (addr, &sxenargo,
+            (*addrlen < sizeof (sxenargo)) ? *addrlen : sizeof (sxenargo));
 
   if (addrlen)
-    *addrlen = sizeof (sxenv4v);
+    *addrlen = sizeof (sxenargo);
 }
 
 int
-v4v_map_sxenv4v_to_v4va (v4v_addr_t * peer,
+argo_map_sxenargo_to_argoa (argo_addr_t * peer,
                          const struct sockaddr *addr, int addrlen)
 {
-  const struct sockaddr_xenv4v *sxenv4v =
-    (const struct sockaddr_xenv4v *) addr;
+  const struct sockaddr_xenargo *sxenargo =
+    (const struct sockaddr_xenargo *) addr;
 
-  if (addrlen != sizeof (struct sockaddr_xenv4v))
+  if (addrlen != sizeof (struct sockaddr_xenargo))
     return -EINVAL;
 
-  if (addrlen != sizeof (struct sockaddr_xenv4v))
+  if (addrlen != sizeof (struct sockaddr_xenargo))
     return -EINVAL;
 
-  if (sxenv4v->sxenv4v_family != AF_XENV4V)
+  if (sxenargo->sxenargo_family != AF_XENARGO)
     return -EINVAL;
 
-  peer->domain = sxenv4v->sxenv4v_domain;
-  peer->port = sxenv4v->sxenv4v_port;
+  peer->domain_id = sxenargo->sxenargo_domain;
+  peer->port = sxenargo->sxenargo_port;
 
   return 0;
 }
 
 int
-v4v_map_sa_to_v4va (v4v_addr_t * peer,
+argo_map_sa_to_argoa (argo_addr_t * peer,
                     const struct sockaddr *addr, int addrlen)
 {
   switch (addr->sa_family)
     {
-    case AF_XENV4V:
-      return v4v_map_sxenv4v_to_v4va (peer, addr, addrlen);
+    case AF_XENARGO:
+      return argo_map_sxenargo_to_argoa (peer, addr, addrlen);
     case AF_INET:
-      return v4v_map_sin_to_v4va (peer, addr, addrlen);
+      return argo_map_sin_to_argoa (peer, addr, addrlen);
     }
   return -EINVAL;
 }

@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2011 Citrix Systems, Inc.
+# Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-MAN_PAGES=libv4v-config.1 ttcp-v4v.1 v4v-proxy.1 viptables.1
+MAN_PAGES=libargo-config.1 ttcp-argo.1 argo-proxy.1
 DEST_MAN=/usr/share/man/man1/
 install: $(MAN_PAGES)
 	mkdir -p $(DESTDIR)$(DEST_MAN)

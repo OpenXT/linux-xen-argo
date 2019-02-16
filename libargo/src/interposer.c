@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012 Citrix Systems, Inc.
+ * Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -39,13 +40,13 @@
 static void init (void);
 
 /*
- * v4v_fds:     lists interposed fd's
- * v4v_checked: lists fd's we have already checked are not V4V
- * v4v_afs:     lists fd's with AF_XENV4V
+ * argo_fds:     lists interposed fd's
+ * argo_checked: lists fd's we have already checked are not ARGO
+ * argo_afs:     lists fd's with AF_XENARGO
  */
-static fd_set v4v_fds;
-static fd_set v4v_checked;
-static fd_set v4v_afs;
+static fd_set argo_fds;
+static fd_set argo_checked;
+static fd_set argo_afs;
 
 static int force_xen;
 
@@ -75,13 +76,13 @@ is_registered (fd_set * p, int fd)
 static void inline
 register_fd (int fd)
 {
-  do_register (&v4v_fds, fd);
+  do_register (&argo_fds, fd);
 }
 
 static void inline
 unregister_fd (int fd)
 {
-  do_unregister (&v4v_fds, fd);
+  do_unregister (&argo_fds, fd);
 }
 
 
@@ -90,36 +91,36 @@ check_fd (int fd)
 {
 #if 0
   /* This would be a better way if the accept()'ed socket
-   * had the /dev/v4v_* inode but for now it doesn't */
+   * had the /dev/argo_* inode but for now it doesn't */
   struct stat st;
-  if (v4v_dgram_inode.st_ino == (ino_t) (-1L) ||
-      v4v_stream_inode.st_ino == (ino_t) (-1L))
+  if (argo_dgram_inode.st_ino == (ino_t) (-1L) ||
+      argo_stream_inode.st_ino == (ino_t) (-1L))
     {
-      if (stat (V4V_DGRAM_DEV, &st))
+      if (stat (ARGO_DGRAM_DEV, &st))
         return;
-      v4v_dgram_inode.st_dev = st.st_dev;
-      v4v_dgram_inode.st_ino = st.st_ino;
-      if (stat (V4V_STREAM_DEV, &st))
+      argo_dgram_inode.st_dev = st.st_dev;
+      argo_dgram_inode.st_ino = st.st_ino;
+      if (stat (ARGO_STREAM_DEV, &st))
         return;
-      v4v_stream_inode.st_dev = st.st_dev;
-      v4v_stream_inode.st_ino = st.st_ino;
+      argo_stream_inode.st_dev = st.st_dev;
+      argo_stream_inode.st_ino = st.st_ino;
     }
   if (fstat (fd, &st))
     return;
-  do_register (&v4v_checked, fd);
-  if (((st.st_dev == v4v_stream_inode.st_dev) &&
-       (st.st_ino == v4v_stream_inode.st_ino)) ||
-      ((st.st_dev == v4v_dgram_inode.st_dev) &&
-       (st.st_ino == v4v_dgram_inode.st_ino)))
-    do_register (&v4v_fds, fd);
+  do_register (&argo_checked, fd);
+  if (((st.st_dev == argo_stream_inode.st_dev) &&
+       (st.st_ino == argo_stream_inode.st_ino)) ||
+      ((st.st_dev == argo_dgram_inode.st_dev) &&
+       (st.st_ino == argo_dgram_inode.st_ino)))
+    do_register (&argo_fds, fd);
 #else
-  struct v4v_ring_id id;
+  struct argo_ring_id id;
   int ret;
 
-  do_register (&v4v_checked, fd);
-  if (!ioctl (fd, V4VIOCGETSOCKNAME, &id))
+  do_register (&argo_checked, fd);
+  if (!ioctl (fd, ARGOIOCGETSOCKNAME, &id))
     {
-      do_register (&v4v_fds, fd);
+      do_register (&argo_fds, fd);
     }
 #endif
 }
@@ -128,30 +129,30 @@ check_fd (int fd)
 static int inline
 is_our_fd (int fd)
 {
-  if ((!is_registered (&v4v_fds, fd)) && (!is_registered (&v4v_checked, fd)))
+  if ((!is_registered (&argo_fds, fd)) && (!is_registered (&argo_checked, fd)))
     {
       check_fd (fd);
     }
-  return is_registered (&v4v_fds, fd);
+  return is_registered (&argo_fds, fd);
 }
 
 
 static void inline
 register_af (int fd)
 {
-  do_register (&v4v_afs, fd);
+  do_register (&argo_afs, fd);
 }
 
 static void inline
 unregister_af (int fd)
 {
-  do_unregister (&v4v_afs, fd);
+  do_unregister (&argo_afs, fd);
 }
 
 static int inline
 is_our_af (int fd)
 {
-  return is_registered (&v4v_afs, fd);
+  return is_registered (&argo_afs, fd);
 }
 
 static void
@@ -168,13 +169,13 @@ do_copy (fd_set * p, int src, int dst)
 static void
 copy_our_fd (int src, int dst)
 {
-  do_copy (&v4v_fds, src, dst);
+  do_copy (&argo_fds, src, dst);
 }
 
 static void
 copy_our_af (int src, int dst)
 {
-  do_copy (&v4v_afs, src, dst);
+  do_copy (&argo_afs, src, dst);
 }
 
 static void init (void);
@@ -186,17 +187,17 @@ INTERPOSE (socket, int, int domain, int type, int protocol)
 
   CHECK_INTERPOSE (socket);
 
-  if ((domain != PF_XENV4V) && (domain != PF_INETV4V) &&
-      ((domain != PF_INET) || (!getenv ("INET_IS_V4V"))) && !force_xen)
+  if ((domain != PF_XENARGO) && (domain != PF_INETARGO) &&
+      ((domain != PF_INET) || (!getenv ("INET_IS_ARGO"))) && !force_xen)
     return orig_socket (domain, type, protocol);
 
-  ret = v4v_socket (type);
+  ret = argo_socket (type);
   if (ret < 0)
     return ret;
 
   register_fd (ret);
 
-  if (domain == PF_XENV4V)
+  if (domain == PF_XENARGO)
     register_af (ret);
   else
     unregister_af (ret);
@@ -217,23 +218,23 @@ INTERPOSE (close, int, int fd)
 INTERPOSE (bind, int, int sockfd, const struct sockaddr * addr,
            socklen_t addrlen)
 {
-  v4v_addr_t v4va;
+  argo_addr_t argoa;
 
   CHECK_INTERPOSE (bind);
 
   if (!is_our_fd (sockfd))
     return orig_bind (sockfd, addr, addrlen);
 
-  if (addr->sa_family == AF_XENV4V)
+  if (addr->sa_family == AF_XENARGO)
     register_af (sockfd);
   else
     unregister_af (sockfd);
 
-  if (v4v_map_sa_to_v4va (&v4va, addr, addrlen))
+  if (argo_map_sa_to_argoa (&argoa, addr, addrlen))
     return -EINVAL;
 
-  return v4v_bind (sockfd, &v4va,
-                   getenv ("V4V_ACCEPT_DOM0_ONLY") ? 0 : V4V_DOMID_NONE);
+  return argo_bind (sockfd, &argoa,
+                   getenv ("ARGO_ACCEPT_DOM0_ONLY") ? 0 : ARGO_DOMID_ANY);
 }
 
 
@@ -241,7 +242,7 @@ INTERPOSE (bind, int, int sockfd, const struct sockaddr * addr,
 INTERPOSE (connect, int, int sockfd, const struct sockaddr * addr,
            socklen_t addrlen)
 {
-  v4v_addr_t peer, me;
+  argo_addr_t peer, me;
   char *val, *end;
   int addend, ret;
 
@@ -250,28 +251,28 @@ INTERPOSE (connect, int, int sockfd, const struct sockaddr * addr,
   if (!is_our_fd (sockfd))
     return orig_connect (sockfd, addr, addrlen);
 
-  if (v4v_map_sa_to_v4va (&peer, addr, addrlen))
+  if (argo_map_sa_to_argoa (&peer, addr, addrlen))
     return -EINVAL;
 
   /* Bind the socket to a specific port if requested */
-  val = getenv ("V4V_CLIENT_PORT_ADDEND");
+  val = getenv ("ARGO_CLIENT_PORT_ADDEND");
   if (val != NULL) {
     addend = strtol(val, &end, 10);
     /* Sanitize the addend */
     if (end == NULL || *end != '\0' || addend < 0)
       return -EINVAL;
-    me.domain = V4V_DOMID_ANY;
+    me.domain_id = ARGO_DOMID_ANY;
     me.port = peer.port + addend;
     DEBUG_PRINTF ("BINDING CLIENT TO port %d\n", (int) me.port);
-    DEBUG_PRINTF ("  AND SET %d AS THE PARTNER\n", (int) peer.domain);
-    ret = v4v_bind(sockfd, &me, peer.domain);
+    DEBUG_PRINTF ("  AND SET %d AS THE PARTNER\n", (int) peer.domain_id);
+    ret = argo_bind(sockfd, &me, peer.domain_id);
     if (ret)
       return ret;
   }
 
-  DEBUG_PRINTF ("CONNECTING TO %d:%d\n", (int) peer.domain, (int) peer.port);
+  DEBUG_PRINTF ("CONNECTING TO %d:%d\n", (int) peer.domain_id, (int) peer.port);
 
-  return v4v_connect (sockfd, &peer);
+  return argo_connect (sockfd, &peer);
 }
 
 INTERPOSE (listen, int, int sockfd, int backlog)
@@ -283,13 +284,13 @@ INTERPOSE (listen, int, int sockfd, int backlog)
   if (!is_our_fd (sockfd))
     return orig_listen (sockfd, backlog);
 
-  return v4v_listen (sockfd, backlog);
+  return argo_listen (sockfd, backlog);
 }
 
 INTERPOSE (accept, int, int sockfd, struct sockaddr * addr,
            socklen_t * addrlen)
 {
-  v4v_addr_t peer;
+  argo_addr_t peer;
   int ret;
 
   CHECK_INTERPOSE (accept);
@@ -297,17 +298,17 @@ INTERPOSE (accept, int, int sockfd, struct sockaddr * addr,
   if (!is_our_fd (sockfd))
     return orig_accept (sockfd, addr, addrlen);
 
-  ret = v4v_accept (sockfd, &peer);
+  ret = argo_accept (sockfd, &peer);
 
   register_fd (ret);
 
   if (is_our_af (sockfd))
     {
-      v4v_map_v4va_to_sxenv4v (addr, addrlen, &peer);
+      argo_map_argoa_to_sxenargo (addr, addrlen, &peer);
     }
   else
     {
-      v4v_map_v4va_to_sin (addr, addrlen, &peer);
+      argo_map_argoa_to_sin (addr, addrlen, &peer);
     }
 
   return ret;
@@ -323,13 +324,13 @@ INTERPOSE (send, ssize_t, int sockfd, const void *buf, size_t len, int flags)
     return orig_send (sockfd, buf, len, flags);
 
 
-  return v4v_send (sockfd, buf, len, flags);
+  return argo_send (sockfd, buf, len, flags);
 }
 
 INTERPOSE (sendmsg, ssize_t, int sockfd, const struct msghdr * msg, int flags)
 {
-  struct msghdr v4vmsg;
-  v4v_addr_t v4va;
+  struct msghdr argomsg;
+  argo_addr_t argoa;
   CHECK_INTERPOSE (sendmsg);
 
   if (!is_our_fd (sockfd))
@@ -338,31 +339,31 @@ INTERPOSE (sendmsg, ssize_t, int sockfd, const struct msghdr * msg, int flags)
   if (!msg)
 	  return -EINVAL;
 
-  v4vmsg = *msg;
-  if (v4vmsg.msg_name) {
-	if (v4v_map_sa_to_v4va(&v4va, v4vmsg.msg_name, v4vmsg.msg_namelen))
+  argomsg = *msg;
+  if (argomsg.msg_name) {
+	if (argo_map_sa_to_argoa(&argoa, argomsg.msg_name, argomsg.msg_namelen))
 		return -EINVAL;
-	v4vmsg.msg_name = &v4va;
-	v4vmsg.msg_namelen = sizeof(v4va);
+	argomsg.msg_name = &argoa;
+	argomsg.msg_namelen = sizeof(argoa);
   }
 
-  return v4v_sendmsg (sockfd, &v4vmsg, flags);
+  return argo_sendmsg (sockfd, &argomsg, flags);
 }
 
 INTERPOSE (sendto, ssize_t, int sockfd, const void *buf, size_t len,
            int flags, const struct sockaddr * dest_addr, socklen_t addrlen)
 {
-  v4v_addr_t peer;
+  argo_addr_t peer;
 
   CHECK_INTERPOSE (sendto);
 
   if (!is_our_fd (sockfd))
     return orig_sendto (sockfd, buf, len, flags, dest_addr, addrlen);
 
-  if (dest_addr && v4v_map_sa_to_v4va (&peer, dest_addr, addrlen))
+  if (dest_addr && argo_map_sa_to_argoa (&peer, dest_addr, addrlen))
     return -EINVAL;
 
-  return v4v_sendto (sockfd, buf, len, flags, dest_addr ? &peer : NULL);
+  return argo_sendto (sockfd, buf, len, flags, dest_addr ? &peer : NULL);
 
 }
 
@@ -374,12 +375,12 @@ INTERPOSE (recv, ssize_t, int sockfd, void *buf, size_t len, int flags)
   if (!is_our_fd (sockfd))
     return orig_recv (sockfd, buf, len, flags);
 
-  return v4v_recv (sockfd, buf, len, flags);
+  return argo_recv (sockfd, buf, len, flags);
 }
 
 INTERPOSE (recvmsg, ssize_t, int sockfd, struct msghdr * msg, int flags)
 {
-  struct v4v_addr peer;
+  struct argo_addr peer;
   struct msghdr my_msg = *msg;
   ssize_t ret;
 
@@ -394,18 +395,18 @@ INTERPOSE (recvmsg, ssize_t, int sockfd, struct msghdr * msg, int flags)
     }
 
 
-  ret = v4v_recvmsg (sockfd, &my_msg, flags);
+  ret = argo_recvmsg (sockfd, &my_msg, flags);
 
 
   if (msg->msg_name)
     {
       if (is_our_af (sockfd))
         {
-          v4v_map_v4va_to_sxenv4v (msg->msg_name, &msg->msg_namelen, &peer);
+          argo_map_argoa_to_sxenargo (msg->msg_name, &msg->msg_namelen, &peer);
         }
       else
         {
-          v4v_map_v4va_to_sin (msg->msg_name, &msg->msg_namelen, &peer);
+          argo_map_argoa_to_sin (msg->msg_name, &msg->msg_namelen, &peer);
         }
     }
 
@@ -419,22 +420,22 @@ INTERPOSE (recvfrom, ssize_t, int sockfd, void *buf, size_t len,
            int flags, struct sockaddr * src_addr, socklen_t * addrlen)
 {
   ssize_t ret;
-  v4v_addr_t peer = { 0 };
+  argo_addr_t peer = { 0 };
 
   CHECK_INTERPOSE (recvfrom);
 
   if (!is_our_fd (sockfd))
     return orig_recvfrom (sockfd, buf, len, flags, src_addr, addrlen);
 
-  ret = v4v_recvfrom (sockfd, buf, len, flags, &peer);
+  ret = argo_recvfrom (sockfd, buf, len, flags, &peer);
 
   if (is_our_af (sockfd))
     {
-      v4v_map_v4va_to_sxenv4v (src_addr, addrlen, &peer);
+      argo_map_argoa_to_sxenargo (src_addr, addrlen, &peer);
     }
   else
     {
-      v4v_map_v4va_to_sin (src_addr, addrlen, &peer);
+      argo_map_argoa_to_sin (src_addr, addrlen, &peer);
     }
 
   return ret;
@@ -445,22 +446,22 @@ INTERPOSE (getsockname, int, int sockfd, struct sockaddr * addr,
            socklen_t * addrlen)
 {
   ssize_t ret;
-  v4v_addr_t name;
+  argo_addr_t name;
 
   CHECK_INTERPOSE (getsockname);
 
   if (!is_our_fd (sockfd))
     return orig_getsockname (sockfd, addr, addrlen);
 
-  ret = v4v_getsockname (sockfd, &name, NULL);
+  ret = argo_getsockname (sockfd, &name, NULL);
 
   if (is_our_af (sockfd))
     {
-      v4v_map_v4va_to_sxenv4v (addr, addrlen, &name);
+      argo_map_argoa_to_sxenargo (addr, addrlen, &name);
     }
   else
     {
-      v4v_map_v4va_to_sin (addr, addrlen, &name);
+      argo_map_argoa_to_sin (addr, addrlen, &name);
     }
 
   return ret;
@@ -471,22 +472,22 @@ INTERPOSE (getpeername, int, int sockfd, struct sockaddr * addr,
            socklen_t * addrlen)
 {
   ssize_t ret;
-  v4v_addr_t ring_addr = { 0 };
+  argo_addr_t ring_addr = { 0 };
 
   CHECK_INTERPOSE (getpeername);
 
   if (!is_our_fd (sockfd))
     return orig_getpeername (sockfd, addr, addrlen);
 
-  ret = v4v_getpeername (sockfd, &ring_addr);
+  ret = argo_getpeername (sockfd, &ring_addr);
 
   if (is_our_af (sockfd))
     {
-      v4v_map_v4va_to_sxenv4v (addr, addrlen, &ring_addr);
+      argo_map_argoa_to_sxenargo (addr, addrlen, &ring_addr);
     }
   else
     {
-      v4v_map_v4va_to_sin (addr, addrlen, &ring_addr);
+      argo_map_argoa_to_sin (addr, addrlen, &ring_addr);
     }
 
   return ret;
@@ -611,7 +612,7 @@ INTERPOSE (getsockopt, int, int sockfd, int level, int optname,
   if (!is_our_fd (sockfd))
     return orig_getsockopt (sockfd, level, optname, optval, optlen);
 
-  return v4v_getsockopt (sockfd, level, optname, optval, optlen);
+  return argo_getsockopt (sockfd, level, optname, optval, optlen);
 }
 
 
@@ -624,12 +625,12 @@ init (void)
   if (ready)
     return;
 
-  FD_ZERO (&v4v_fds);
-  FD_ZERO (&v4v_afs);
+  FD_ZERO (&argo_fds);
+  FD_ZERO (&argo_afs);
 
 #if 0
-  v4v_dgram_inode.st_dev = (dev_t) (-1L);
-  v4v_dgram_inode.st_ino = (ino_t) (-1L);
+  argo_dgram_inode.st_dev = (dev_t) (-1L);
+  argo_dgram_inode.st_ino = (ino_t) (-1L);
 #endif
 
   FIND (socket);

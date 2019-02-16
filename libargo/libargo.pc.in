@@ -3,10 +3,10 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libv4v
-Description: libv4v
+Name: libargo
+Description: libargo
 Requires: 
 Version: @VERSION@
-Libs: -L${libdir} -lv4v @LIBS@
+Libs: -L${libdir} -largo @LIBS@
 Cflags: -I${includedir}
 

@@ -19,10 +19,10 @@
 #
 # Autoconf initialisation.
 #
-AC_INIT(libv4v, 1.0)
+AC_INIT(libargo, 1.0)
 AC_PREREQ(2.13)
 AC_CONFIG_HEADERS(src/config.h)
-AC_CONFIG_SRCDIR(src/libv4v.h)
+AC_CONFIG_SRCDIR(src/libargo.h)
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -33,8 +33,8 @@ AC_CONFIG_MACRO_DIR([m4])
 #
 VERSION_MAJOR=1
 VERSION_MINOR=0
-AC_DEFINE_UNQUOTED([VERSION_MAJOR], [$VERSION_MAJOR], [libv4v major version number])
-AC_DEFINE_UNQUOTED([VERSION_MINOR], [$VERSION_MINOR], [libv4v minor version number])
+AC_DEFINE_UNQUOTED([VERSION_MAJOR], [$VERSION_MAJOR], [libargo major version number])
+AC_DEFINE_UNQUOTED([VERSION_MINOR], [$VERSION_MINOR], [libargo minor version number])
 
 #
 # Standard checks.
@@ -49,7 +49,7 @@ AM_PROG_AR
 #
 # Libtool version system.
 #
-# TODO: A lot of scripts assume libv4v-1.0.so.0 or even libv4v-1.0.so.0.0.0 to
+# TODO: A lot of scripts assume libargo-1.0.so.0 or even libargo-1.0.so.0.0.0 to
 # exist and have hardcoded that value.
 # It makes little difference to maintain the soname for now since the version
 # is unlikely to change soon, but will most certainly break the various scripts
@@ -72,10 +72,10 @@ AC_C_INLINE
 AC_C_CONST
 
 # Required headers.
-AC_CHECK_HEADERS([xen/v4v.h linux/v4v_dev.h], [] , AC_MSG_ERROR([V4V headers are missing.]),
+AC_CHECK_HEADERS([xen/argo.h linux/argo_dev.h], [] , AC_MSG_ERROR([ARGO headers are missing.]),
                  [#include <stdint.h>
                   #include <unistd.h>
-                  #define V4V_EXCLUDE_INTERNAL
+                  #define ARGO_EXCLUDE_INTERNAL
                   ])
 
 # Required libraries.
@@ -86,5 +86,5 @@ AC_OUTPUT([Makefile
            src/Makefile
 	   test/Makefile
 	   app/Makefile
-           libv4v.pc
+           libargo.pc
            ])

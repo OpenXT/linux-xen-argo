@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2010 Citrix Systems, Inc.
+# Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,12 +19,12 @@
 
 CXX=gcc
 CXXFLAGS=-c -Wall -I include 
-#-DV4V_EXCLUDE_INTERNAL
+#-DARGO_EXCLUDE_INTERNAL
 LDFLAGS=
 
 SOURCES=main.c fileTransfer.c
 
-LIBS=-lv4v -ldl
+LIBS=-largo -ldl
 
 OBJECTS=$(SOURCES:.c=.o)
 

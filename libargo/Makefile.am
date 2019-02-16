@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2012 Citrix Systems, Inc.
+# Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -21,4 +22,4 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = src test app
 
 pkgconfigdir = ${libdir}/pkgconfig
-pkgconfig_DATA = libv4v.pc
+pkgconfig_DATA = libargo.pc

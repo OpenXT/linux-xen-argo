@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012 Citrix Systems, Inc.
+ * Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,56 +17,51 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __LIBV4V_H__
-# define __LIBV4V_H__
+#ifndef __LIBARGO_H__
+# define __LIBARGO_H__
 
 # ifdef __cplusplus
 extern "C" {
 # endif
 
 # include <stdint.h>
-# define V4V_EXCLUDE_INTERNAL
-# include <xen/v4v.h>
+# define ARGO_EXCLUDE_INTERNAL
+# include <xen/argo.h>
 # include <sys/socket.h>
 
-# define PF_XENV4V      13398		/*An unimaginative constant*/
-# define AF_XENV4V      PF_XENV4V
-# define PF_INETV4V     13399		/* v4v socket but otherwise treated as inet everywhere */
-# define AF_INETV4V     PF_INETV4V
+# define PF_XENARGO      13398		/*An unimaginative constant*/
+# define AF_XENARGO      PF_XENARGO
+# define PF_INETARGO     13399		/* argo socket but otherwise treated as inet everywhere */
+# define AF_INETARGO     PF_INETARGO
 
-struct sockaddr_xenv4v {
-	__SOCKADDR_COMMON (sxenv4v_);    /* Common data: address family and length.  */
-	uint32_t sxenv4v_port;
-	domid_t sxenv4v_domain;
+struct sockaddr_xenargo {
+	__SOCKADDR_COMMON (sxenargo_);    /* Common data: address family and length.  */
+	uint32_t sxenargo_port;
+	domid_t sxenargo_domain;
 
-        unsigned char sxenv4v_zero[sizeof (struct sockaddr) -
+        unsigned char sxenargo_zero[sizeof (struct sockaddr) -
                            __SOCKADDR_COMMON_SIZE -
                            sizeof (domid_t) -
                            sizeof (uint32_t)];
 };
 
-int v4v_socket(int type);
-int v4v_close(int fd);
-int v4v_bind(int fd, v4v_addr_t *addr, domid_t partner);
-int v4v_connect(int fd, v4v_addr_t *peer);
-int v4v_listen(int fd, int backlog);
-int v4v_accept(int fd, v4v_addr_t *peer);
-ssize_t v4v_send(int fd, const void *buf, size_t len, int flags);
-ssize_t v4v_sendmsg(int fd, const struct msghdr *msg, int flags);
-ssize_t v4v_sendto(int fd, const void *buf, size_t len, int flags, v4v_addr_t *dest_addr);
-ssize_t v4v_recv(int fd, void *buf, size_t len, int flags);
-ssize_t v4v_recvmsg(int fd, struct msghdr *msg, int flags);
-ssize_t v4v_recvfrom(int fd, void *buf, size_t len, int flags, v4v_addr_t *src_addr);
-int v4v_getsockname(int fd, v4v_addr_t *addr, domid_t *partner);
-int v4v_getpeername(int fd, v4v_addr_t *addr);
-int v4v_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
-
-int v4v_viptables_add (int fd, v4v_viptables_rule_t *rule, int position);
-int v4v_viptables_del (int fd, v4v_viptables_rule_t *rule, int position);
-int v4v_viptables_flush (int fd);
-int v4v_viptables_list (int fd);
+int argo_socket(int type);
+int argo_close(int fd);
+int argo_bind(int fd, argo_addr_t *addr, domid_t partner);
+int argo_connect(int fd, argo_addr_t *peer);
+int argo_listen(int fd, int backlog);
+int argo_accept(int fd, argo_addr_t *peer);
+ssize_t argo_send(int fd, const void *buf, size_t len, int flags);
+ssize_t argo_sendmsg(int fd, const struct msghdr *msg, int flags);
+ssize_t argo_sendto(int fd, const void *buf, size_t len, int flags, argo_addr_t *dest_addr);
+ssize_t argo_recv(int fd, void *buf, size_t len, int flags);
+ssize_t argo_recvmsg(int fd, struct msghdr *msg, int flags);
+ssize_t argo_recvfrom(int fd, void *buf, size_t len, int flags, argo_addr_t *src_addr);
+int argo_getsockname(int fd, argo_addr_t *addr, domid_t *partner);
+int argo_getpeername(int fd, argo_addr_t *addr);
+int argo_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
 
 # ifdef __cplusplus
 }
 # endif /* __cplusplus */
-#endif /* __LIBV4V_H__ */
+#endif /* __LIBARGO_H__ */

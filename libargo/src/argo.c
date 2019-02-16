@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012 Citrix Systems, Inc.
+ * Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -63,7 +64,7 @@ linearize_iov (void *_buf, struct iovec *iov, int n)
 
 
 int
-v4v_socket (int type)
+argo_socket (int type)
 {
   int ret;
   int flags=type;
@@ -79,10 +80,10 @@ v4v_socket (int type)
   switch (type)
     {
     case SOCK_STREAM:
-      ret = open (V4V_STREAM_DEV, O_RDWR);
+      ret = open (ARGO_STREAM_DEV, O_RDWR);
       break;
     case SOCK_DGRAM:
-      ret = open (V4V_DGRAM_DEV, O_RDWR);
+      ret = open (ARGO_DGRAM_DEV, O_RDWR);
       break;
     default:
       errno = EPROTONOSUPPORT;
@@ -118,7 +119,7 @@ v4v_socket (int type)
 }
 
 int
-v4v_close (int fd)
+argo_close (int fd)
 {
   return close (fd);
 }
@@ -126,50 +127,50 @@ v4v_close (int fd)
 
 
 int
-v4v_bind (int fd, v4v_addr_t * addr, domid_t partner)
+argo_bind (int fd, argo_addr_t * addr, domid_t partner)
 {
-  struct v4v_ring_id id;
+  struct argo_ring_id id;
   int ret;
 
-  if (addr && !addr->domain)
-      addr->domain = V4V_DOMID_ANY;
+  if (addr && !addr->domain_id)
+      addr->domain_id = ARGO_DOMID_ANY;
 
   id.addr = *addr;
   id.partner = partner;
 
   //no need for mlock, id is copied into kernel memory
-  return v4v_ioctl (fd, V4VIOCBIND, &id);
+  return argo_ioctl (fd, ARGOIOCBIND, &id);
 }
 
 
 
 int
-v4v_connect (int fd, v4v_addr_t * peer)
+argo_connect (int fd, argo_addr_t * peer)
 {
   //no need for mlock, peer is copied into kernel memory
-  return v4v_ioctl (fd, V4VIOCCONNECT, peer);
+  return argo_ioctl (fd, ARGOIOCCONNECT, peer);
 }
 
 int
-v4v_listen (int fd, int backlog)
+argo_listen (int fd, int backlog)
 {
   //no need for mlock
-  return v4v_ioctl (fd, V4VIOCLISTEN, &backlog);
+  return argo_ioctl (fd, ARGOIOCLISTEN, &backlog);
 }
 
 int
-v4v_accept (int fd, v4v_addr_t * peer)
+argo_accept (int fd, argo_addr_t * peer)
 {
   //no need for mlock, peer accessed from kernel
-  return v4v_ioctl (fd, V4VIOCACCEPT, peer);
+  return argo_ioctl (fd, ARGOIOCACCEPT, peer);
 }
 
 
 
 ssize_t
-v4v_send (int fd, const void *buf, size_t len, int flags)
+argo_send (int fd, const void *buf, size_t len, int flags)
 {
-  struct v4v_dev op;
+  struct argo_dev op;
   ssize_t ret;
 
   op.buf = (void *) buf;
@@ -181,7 +182,7 @@ v4v_send (int fd, const void *buf, size_t len, int flags)
   mlock (op.buf, op.len);
 #endif
 
-  ret = v4v_ioctl (fd, V4VIOCSEND, &op);
+  ret = argo_ioctl (fd, ARGOIOCSEND, &op);
 
 #ifdef I_AM_A_BROKEN_WEENIE
   munlock (op.buf, op.len);
@@ -191,14 +192,14 @@ v4v_send (int fd, const void *buf, size_t len, int flags)
 }
 
 ssize_t
-v4v_sendmsg (int fd, const struct msghdr * msg, int flags)
+argo_sendmsg (int fd, const struct msghdr * msg, int flags)
 {
-  struct v4v_dev op;
+  struct argo_dev op;
   ssize_t ret;
 
   op.flags = flags;
 
-  op.addr = (v4v_addr_t *) msg->msg_name;
+  op.addr = (argo_addr_t *) msg->msg_name;
 
   op.len = count_iov (msg->msg_iov, msg->msg_iovlen);
   op.buf = malloc (op.len);
@@ -213,15 +214,15 @@ v4v_sendmsg (int fd, const struct msghdr * msg, int flags)
 #ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
   if (op.addr)
-    mlock (op.addr, sizeof (v4v_addr_t));
+    mlock (op.addr, sizeof (argo_addr_t));
 #endif
 
   //send is all in kernel
-  ret = v4v_ioctl (fd, V4VIOCSEND, &op);
+  ret = argo_ioctl (fd, ARGOIOCSEND, &op);
 
 #ifdef I_AM_A_BROKEN_WEENIE
   if (op.addr)
-    munlock (op.addr, sizeof (v4v_addr_t));
+    munlock (op.addr, sizeof (argo_addr_t));
   munlock (op.buf, op.len);
 #endif
 
@@ -231,10 +232,10 @@ v4v_sendmsg (int fd, const struct msghdr * msg, int flags)
 }
 
 ssize_t
-v4v_sendto (int fd, const void *buf, size_t len, int flags,
-            v4v_addr_t * dest_addr)
+argo_sendto (int fd, const void *buf, size_t len, int flags,
+            argo_addr_t * dest_addr)
 {
-  struct v4v_dev op;
+  struct argo_dev op;
   ssize_t ret;
 
   op.buf = (void *) buf;
@@ -245,14 +246,14 @@ v4v_sendto (int fd, const void *buf, size_t len, int flags,
 #ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
   if (op.addr)
-    mlock (op.addr, sizeof (v4v_addr_t));
+    mlock (op.addr, sizeof (argo_addr_t));
 #endif
 
-  ret = v4v_ioctl (fd, V4VIOCSEND, &op);
+  ret = argo_ioctl (fd, ARGOIOCSEND, &op);
 
 #ifdef I_AM_A_BROKEN_WEENIE
   if (op.addr)
-    munlock (op.addr, sizeof (v4v_addr_t));
+    munlock (op.addr, sizeof (argo_addr_t));
   munlock (op.buf, op.len);
 #endif
 
@@ -261,9 +262,9 @@ v4v_sendto (int fd, const void *buf, size_t len, int flags,
 
 
 ssize_t
-v4v_recv (int fd, void *buf, size_t len, int flags)
+argo_recv (int fd, void *buf, size_t len, int flags)
 {
-  struct v4v_dev op;
+  struct argo_dev op;
   ssize_t ret;
 
   op.addr = NULL;
@@ -272,20 +273,20 @@ v4v_recv (int fd, void *buf, size_t len, int flags)
   op.flags = flags;
 
   //recv is all in kernel
-  ret = v4v_ioctl (fd, V4VIOCRECV, &op);
+  ret = argo_ioctl (fd, ARGOIOCRECV, &op);
 
   return ret;
 }
 
 ssize_t
-v4v_recvmsg (int fd, struct msghdr * msg, int flags)
+argo_recvmsg (int fd, struct msghdr * msg, int flags)
 {
-  struct v4v_dev op;
+  struct argo_dev op;
   ssize_t ret;
 
   op.flags = flags;
 
-  op.addr = (v4v_addr_t *) msg->msg_name;
+  op.addr = (argo_addr_t *) msg->msg_name;
 
   op.len = count_iov (msg->msg_iov, msg->msg_iovlen);
   op.buf = malloc (op.len);
@@ -296,7 +297,7 @@ v4v_recvmsg (int fd, struct msghdr * msg, int flags)
     }
 
   //recv is all in kernel
-  ret = v4v_ioctl (fd, V4VIOCRECV, &op);
+  ret = argo_ioctl (fd, ARGOIOCRECV, &op);
 
   unlinearize_iov (msg->msg_iov, msg->msg_iovlen, op.buf);
   free (op.buf);
@@ -308,9 +309,9 @@ v4v_recvmsg (int fd, struct msghdr * msg, int flags)
 
 
 ssize_t
-v4v_recvfrom (int fd, void *buf, size_t len, int flags, v4v_addr_t * src_addr)
+argo_recvfrom (int fd, void *buf, size_t len, int flags, argo_addr_t * src_addr)
 {
-  struct v4v_dev op;
+  struct argo_dev op;
   ssize_t ret;
 
   op.buf = buf;
@@ -319,18 +320,18 @@ v4v_recvfrom (int fd, void *buf, size_t len, int flags, v4v_addr_t * src_addr)
   op.addr = src_addr;
 
   //recv is all in kernel
-  return v4v_ioctl (fd, V4VIOCRECV, &op);
+  return argo_ioctl (fd, ARGOIOCRECV, &op);
 }
 
 
 int
-v4v_getsockname (int fd, v4v_addr_t * addr, domid_t * partner)
+argo_getsockname (int fd, argo_addr_t * addr, domid_t * partner)
 {
-  struct v4v_ring_id id;
+  struct argo_ring_id id;
   int ret;
 
   //all in kernel
-  ret = v4v_ioctl (fd, V4VIOCGETSOCKNAME, &id);
+  ret = argo_ioctl (fd, ARGOIOCGETSOCKNAME, &id);
 
   if (partner)
     *partner = id.partner;
@@ -343,14 +344,14 @@ v4v_getsockname (int fd, v4v_addr_t * addr, domid_t * partner)
 
 
 int
-v4v_getpeername (int fd, v4v_addr_t * addr)
+argo_getpeername (int fd, argo_addr_t * addr)
 {
   //all in kernel
-  return v4v_ioctl (fd, V4VIOCGETPEERNAME, addr);
+  return argo_ioctl (fd, ARGOIOCGETPEERNAME, addr);
 }
 
 int
-v4v_getsockopt (int fd, int level, int optname,
+argo_getsockopt (int fd, int level, int optname,
                 void *optval, socklen_t * optlen)
 {
   int ret;
@@ -360,7 +361,7 @@ v4v_getsockopt (int fd, int level, int optname,
       int error;
 
       //all in kernel
-      ret = v4v_ioctl (fd, V4VIOCGETCONNECTERR, &error);
+      ret = argo_ioctl (fd, ARGOIOCGETCONNECTERR, &error);
       if (ret)
         return ret;
 
@@ -379,10 +380,10 @@ v4v_getsockopt (int fd, int level, int optname,
     }
   if ((level == SOL_SOCKET) && (optname == SO_TYPE)) {
      int type;
-     ret = v4v_ioctl (fd, V4VIOCGETSOCKTYPE, &type);
+     ret = argo_ioctl (fd, ARGOIOCGETSOCKTYPE, &type);
      if (ret)
          return ret;
-     type = (type == V4V_PTYPE_DGRAM) ? SOCK_DGRAM : SOCK_STREAM;
+     type = (type == ARGO_PTYPE_DGRAM) ? SOCK_DGRAM : SOCK_STREAM;
      if (optval && optlen) {
          memcpy(optval, &type, *optlen > sizeof (type) ? sizeof (type) : *optlen);
          *optlen = sizeof (type);
@@ -391,125 +392,4 @@ v4v_getsockopt (int fd, int level, int optname,
    }
   errno = ENOPROTOOPT;
   return -1;
-}
-
-int
-v4v_viptables_add (int fd, v4v_viptables_rule_t* rule, int position)
-{
-  int ret;
-  struct v4v_viptables_rule_pos rule_pos;
-
-  mlock (rule, sizeof(v4v_viptables_rule_t));
-  rule_pos.rule = rule;
-  rule_pos.position = position;
-
-  ret = v4v_ioctl (fd, V4VIOCVIPTABLESADD, &rule_pos);
-
-  munlock (rule, sizeof(v4v_viptables_rule_t));
-
-  return ret;
-}
-
-int
-v4v_viptables_del (int fd, v4v_viptables_rule_t* rule, int position)
-{
-  int ret;
-
-  struct v4v_viptables_rule_pos rule_pos;
-
-  if (rule != NULL)
-    mlock (rule, sizeof(v4v_viptables_rule_t));
-
-  rule_pos.rule = rule;
-  rule_pos.position = position;
-
-  ret = v4v_ioctl (fd, V4VIOCVIPTABLESDEL, &rule_pos);
-
-  if (rule != NULL)
-    munlock (rule, sizeof(v4v_viptables_rule_t));
-
-  return ret;
-}
-
-int
-v4v_viptables_flush (int fd)
-{
-  int ret;
-
-  struct v4v_viptables_rule_pos rule_pos;
-
-  rule_pos.rule = NULL;
-  rule_pos.position = -1;
-
-  ret = v4v_ioctl (fd, V4VIOCVIPTABLESDEL, &rule_pos);
-
-  return ret;
-}
-
-static void
-v4v_viptables_print_rule(struct v4v_viptables_rule *rule)
-{
-  if (rule->accept == 1)
-    printf("ACCEPT");
-  else
-    printf("REJECT");
-
-  printf(" ");
-
-  if (rule->src.domain == DOMID_INVALID)
-    printf("*");
-  else
-    printf("%i", rule->src.domain);
-
-  printf(":");
-
-  if (rule->src.port == -1)
-    printf("*");
-  else
-    printf("%i", rule->src.port);
-
-  printf(" -> ");
-
-  if (rule->dst.domain == DOMID_INVALID)
-    printf("*");
-  else
-    printf("%i", rule->dst.domain);
-
-  printf(":");
-
-  if (rule->dst.port == -1)
-    printf("*");
-  else
-    printf("%i", rule->dst.port);
-
-  printf("\n");
-}
-
-int
-v4v_viptables_list (int fd)
-{
-  int ret, i, total_rules_printed = 0, rules_i = 1;
-
-  struct v4v_viptables_list rules_list;
-  memset(&rules_list, 0, sizeof (rules_list));
-
-  do
-  {
-      rules_list.nb_rules = total_rules_printed;
-      ret = v4v_ioctl (fd, V4VIOCVIPTABLESLIST, &rules_list);
-
-      if (ret != 0)
-          return ret;
-
-      for (i = 0; i < rules_list.nb_rules; ++i)
-      {
-          printf("%i : ", rules_i++);
-          v4v_viptables_print_rule(&rules_list.rules[i]);
-      }
-
-      total_rules_printed += rules_list.nb_rules;
-
-  } while (rules_list.nb_rules == V4V_VIPTABLES_LIST_SIZE);
-
-  return ret;
 }

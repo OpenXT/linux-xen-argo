@@ -22,4 +22,4 @@ AM_CFLAGS = -g
 noinst_PROGRAMS = test
 
 test_SOURCES = test.c
-test_LDADD = ../src/libv4v.la
+test_LDADD = ../src/libargo.la

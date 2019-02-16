@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2010 Citrix Systems, Inc.
+# Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,13 +20,10 @@
 AM_CPPFLAGS = -I$(srcdir)/../src
 AM_CFLAGS = -g
 
-bin_PROGRAMS = ttcp-v4v v4v-proxy viptables
+bin_PROGRAMS = ttcp-argo argo-proxy
 
-ttcp_v4v_SOURCES = ttcp.c
-ttcp_v4v_LDADD = ../src/libv4v.la
+ttcp_argo_SOURCES = ttcp.c
+ttcp_argo_LDADD = ../src/libargo.la
 
-v4v_proxy_SOURCES = proxy.c
-v4v_proxy_LDADD = ../src/libv4v.la
-
-viptables_SOURCES = viptables.c
-viptables_LDADD = ../src/libv4v.la
+argo_proxy_SOURCES = proxy.c
+argo_proxy_LDADD = ../src/libargo.la

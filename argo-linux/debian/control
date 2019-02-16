@@ -1,12 +1,12 @@
-Source: v4v
+Source: argo
 Section: kernel
 Priority: optional
-Maintainer: OpenXT Community
+Maintainer: Xen
 Build-Depends: dkms
 Standards-Version: 1.0.0
 
-Package: v4v-dkms
+Package: argo-dkms
 Architecture: all
 Depends: dkms
-Description: OpenXT v4v
- V4V module
+Description: Argo Hypervisor-Mediated data eXchange
+ Argo module

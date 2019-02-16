@@ -1,8 +1,10 @@
 
-This is the libv4v package. It was assembled by OpenXT Community
+This is the libargo package. It was assembled by OpenXT Community
 <openxt@googlegroups.com>. It is currently maintained by OpenXT Community
 <openxt@googlegroups.com>.
 
+libargo Copyright (C) 2018 BAE Systems
+derived from:
 libv4v Copyright (C) 2012 Citrix Systems, Inc.
 
 This package is free software; you may redistribute it and/or modify it

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010 Citrix Systems, Inc.
+ * Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,13 +21,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <libv4v.h>
+#include <libargo.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/uio.h>
 #include "fileTransfer.h"
-
-
 
 int TransferSizeTable[] = {12, 14, 17, 32,64, 128, 243, 512, 1024, 2048, 4096, 8192, 16384, 32758, 65535};
 
@@ -54,27 +53,27 @@ int WaitForIncomingConnection(int listenPort, int domid)
     int keepGoing = 1;
     int returnValue = 0;
     int svrSocket = 0;
-    v4v_addr_t addr;
-    v4v_addr_t peer;
+    argo_addr_t addr;
+    argo_addr_t peer;
     printf("%s begin.\n", __FUNCTION__);
 
-    svrSocket = v4v_socket (SOCK_STREAM);
+    svrSocket = argo_socket (SOCK_STREAM);
     if (svrSocket < 0)
     {
-	printf("domid %d: socket(PF_XENV4V,SOCK_STREAM,0) failed\n", domid);
+	printf("domid %d: socket(PF_XENARGO,SOCK_STREAM,0) failed\n", domid);
     }
     else
     {
-	addr.domain = V4V_DOMID_ANY;
+	addr.domain = ARGO_DOMID_ANY;
 	addr.port = listenPort;
 
-	/*We need the special v4v version of this call to bind for one domain only*/
-	if (v4v_bind (svrSocket, &addr, domid))
+	/*We need the special argo version of this call to bind for one domain only*/
+	if (argo_bind (svrSocket, &addr, domid))
 	{
-	    printf("domid %d: v4v_bind(fd,SOCK_STREAM,0) failed: %m\n", domid);
+	    printf("domid %d: argo_bind(fd,SOCK_STREAM,0) failed: %m\n", domid);
 	}
 
-	if (v4v_listen (svrSocket, 5))
+	if (argo_listen (svrSocket, 5))
 	{
 	    printf ("domid %d: listen(fd,SOCK_STREAM,0) failed: %m\n", domid);
 	}
@@ -86,7 +85,7 @@ int WaitForIncomingConnection(int listenPort, int domid)
 	if (keepGoing)
 	{
 	    printf("All listening ok, waiting to accept\n");
-	    returnValue = v4v_accept(svrSocket, &peer);
+	    returnValue = argo_accept(svrSocket, &peer);
 
 	    printf("Accept returned %d\n", returnValue);
 	}
@@ -102,20 +101,20 @@ int ConnectionToRemote(int remotePort, int domid)
 {
     int returnValue = 0;
     int connSocket = 0;
-    v4v_addr_t addr;
+    argo_addr_t addr;
     printf("%s begin.\n", __FUNCTION__);
 
-    connSocket = v4v_socket (SOCK_STREAM);
+    connSocket = argo_socket (SOCK_STREAM);
     if (connSocket < 0)
     {
-	printf("domid %d: socket(PF_XENV4V,SOCK_STREAM,0) failed\n", domid);
+	printf("domid %d: socket(PF_XENARGO,SOCK_STREAM,0) failed\n", domid);
         return 0;
     }
 
     addr.domain = domid;
     addr.port = remotePort;
 
-    returnValue = v4v_connect(connSocket, &addr);
+    returnValue = argo_connect(connSocket, &addr);
 
     printf("%s end. return %d socket: %d\n", __FUNCTION__, returnValue, connSocket);
     return connSocket;
@@ -154,7 +153,7 @@ void ReceiveFile(int connection, char *fileName)
 	    
 	    if (bytesRead <= 0)
 	    {
-		printf("read from v4v returned %d, so exiting\n", (int)bytesRead);
+		printf("read from argo returned %d, so exiting\n", (int)bytesRead);
 		keepGoing = 0;
 	    }
 	    else
@@ -163,7 +162,7 @@ void ReceiveFile(int connection, char *fileName)
 		bytesWritten = fwrite(readBuffer, 1, bytesRead, fileDescriptor);
 		totalBytesToFile += bytesWritten;
 		fflush(fileDescriptor);
-		printf("read from v4v returned %d bytes. totalBytesReceived %d, totalBytesToFile %d.\n", 
+		printf("read from argo returned %d bytes. totalBytesReceived %d, totalBytesToFile %d.\n", 
 		       (int)bytesRead, 
 		       totalBytesReceived,
 		       totalBytesToFile);

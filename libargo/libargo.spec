@@ -1,13 +1,13 @@
-Name: libv4v
-Summary: libv4v
-Source0: libv4v.tar.gz
+Name: libargo
+Summary: libargo
+Source0: libargo.tar.gz
 BuildArch: i686 x86_64
 Version: 1.0
 Release: 1%{?dist}
 License: LGPL2.1
 
 %description
-libv4v
+libargo
 
 %prep
 %setup -q
@@ -27,23 +27,23 @@ make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} -C src install 2>&1 | sed "s/lib
 make LIBTOOLFLAGS=--silent DESTDIR=%{buildroot} install-data-am
 
 %files
-%{_libdir}/libv4v-1.0.so.0
-%{_libdir}/libv4v-1.0.so.0.0.0
-%{_libdir}/libv4v_nointerposer-1.0.so.0
-%{_libdir}/libv4v_nointerposer-1.0.so.0.0.0
+%{_libdir}/libargo-1.0.so.0
+%{_libdir}/libargo-1.0.so.0.0.0
+%{_libdir}/libargo_nointerposer-1.0.so.0
+%{_libdir}/libargo_nointerposer-1.0.so.0.0.0
 
 %package devel
-Summary: libv4v-devel
+Summary: libargo-devel
 
 %description devel
-libv4v-devel
+libargo-devel
 
 %files devel
-%{_includedir}/libv4v.h
-%{_libdir}/libv4v.a
-%{_libdir}/libv4v.la
-%{_libdir}/libv4v.so
-%{_libdir}/libv4v_nointerposer.a
-%{_libdir}/libv4v_nointerposer.la
-%{_libdir}/libv4v_nointerposer.so
-%{_libdir}/pkgconfig/libv4v.pc
+%{_includedir}/libargo.h
+%{_libdir}/libargo.a
+%{_libdir}/libargo.la
+%{_libdir}/libargo.so
+%{_libdir}/libargo_nointerposer.a
+%{_libdir}/libargo_nointerposer.la
+%{_libdir}/libargo_nointerposer.so
+%{_libdir}/pkgconfig/libargo.pc

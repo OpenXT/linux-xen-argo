@@ -1,4 +1,4 @@
-obj-m += v4v.o
+obj-m += argo.o
 
 ccflags-y := -I$(src)/include
 ccflags-$(CONFIG_X86_32) += -fomit-frame-pointer

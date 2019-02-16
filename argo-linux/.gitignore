@@ -7,3 +7,5 @@ Module.symvers
 *.o
 *.o.cmd
 .tmp_versions
+tags
+cscope.*

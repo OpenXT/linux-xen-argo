@@ -32,7 +32,7 @@
 
 #include <sys/select.h>
 
-#include "libv4v.h"
+#include "libargo.h"
 
 static void
 sigchld_handler (int dummy)
@@ -61,7 +61,7 @@ die (char *msg)
 static void
 usage ()
 {
-  printf ("Usage:\nv4v-proxy [-p port] [-p port2] ...\n");
+  printf ("Usage:\nargo-proxy [-p port] [-p port2] ...\n");
   exit (1);
 }
 
@@ -120,20 +120,20 @@ static void
 proxy (int afd, int port)
 {
   int xfd;
-  struct sockaddr_xenv4v sxl, sxr;
+  struct sockaddr_xenargo sxl, sxr;
   int n, red;
   fd_set fds;
   char buf[1024];
 
-  xfd = socket (PF_XENV4V, SOCK_STREAM, 0);
+  xfd = socket (PF_XENARGO, SOCK_STREAM, 0);
   if (!xfd)
-    die ("socket(PF_XENV4V,SOCK_STREAM,0);");
+    die ("socket(PF_XENARGO,SOCK_STREAM,0);");
 
   memset (&sxl, 0, sizeof (sxl));
 
-  sxl.sxenv4v_family = AF_XENV4V;
-  sxl.sxenv4v_port = 0;
-  sxl.sxenv4v_domain = V4V_DOMID_NONE;
+  sxl.sxenargo_family = AF_XENARGO;
+  sxl.sxenargo_port = 0;
+  sxl.sxenargo_domain = ARGO_DOMID_ANY;
 
   if (bind (xfd, (struct sockaddr *) &sxl, sizeof (sxl)))
     die ("bind(xen_socket,....);");
@@ -142,9 +142,9 @@ proxy (int afd, int port)
   memset (&sxr, 0, sizeof (sxr));
 
 
-  sxr.sxenv4v_family = AF_XENV4V;
-  sxr.sxenv4v_port = port;
-  sxr.sxenv4v_domain = 0;
+  sxr.sxenargo_family = AF_XENARGO;
+  sxr.sxenargo_port = port;
+  sxr.sxenargo_domain = 0;
 
   if (connect (xfd, (struct sockaddr *) &sxr, sizeof (sxr)))
     die ("connext(xen_socket,....);");

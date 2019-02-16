@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2012 Citrix Systems, Inc.
+# Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,25 +19,25 @@
 
 noinst_HEADERS = project.h
 
-include_HEADERS = libv4v.h
+include_HEADERS = libargo.h
 
-lib_LTLIBRARIES = libv4v_nointerposer.la libv4v.la
+lib_LTLIBRARIES = libargo_nointerposer.la libargo.la
 
-libv4v_nointerposer_la_SOURCES = \
-	v4v.c \
+libargo_nointerposer_la_SOURCES = \
+	argo.c \
 	map.c
-libv4v_nointerposer_la_LDFLAGS = \
+libargo_nointerposer_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE) \
 	-export-dynamic
-libv4v_nointerposer_la_LIBTOOLFLAGS = --silent
+libargo_nointerposer_la_LIBTOOLFLAGS = --silent
 
-libv4v_la_SOURCES = \
-	v4v.c \
+libargo_la_SOURCES = \
+	argo.c \
 	map.c \
 	interposer.c
-libv4v_la_LDFLAGS = \
+libargo_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE) \
 	-export-dynamic
-libv4v_la_LIBTOOLFLAGS = --silent
+libargo_la_LIBTOOLFLAGS = --silent

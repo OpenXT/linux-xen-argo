@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010 Citrix Systems, Inc.
+ * Modifications by Christopher Clark, Copyright (c) 2018 BAE Systems
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -63,32 +64,32 @@
 # include <netinet/in.h>
 # include <netinet/tcp.h>
 
-# define V4V_EXCLUDE_INTERNAL
-# include <linux/v4v_dev.h>
+# define ARGO_EXCLUDE_INTERNAL
+# include <linux/argo_dev.h>
 
-# include "libv4v.h"
+# include "libargo.h"
 
-void v4v_map_v4va_to_sin (struct sockaddr *addr, socklen_t *addrlen,
-		v4v_addr_t *peer);
-int v4v_map_sin_to_v4va (v4v_addr_t *peer, const struct sockaddr *addr,
+void argo_map_argoa_to_sin (struct sockaddr *addr, socklen_t *addrlen,
+		argo_addr_t *peer);
+int argo_map_sin_to_argoa (argo_addr_t *peer, const struct sockaddr *addr,
 		int addrlen);
-void v4v_map_v4va_to_sxenv4v (struct sockaddr *addr, socklen_t *addrlen,
-		v4v_addr_t *peer);
-int v4v_map_sxenv4v_to_v4va (v4v_addr_t *peer, const struct sockaddr *addr,
+void argo_map_argoa_to_sxenargo (struct sockaddr *addr, socklen_t *addrlen,
+		argo_addr_t *peer);
+int argo_map_sxenargo_to_argoa (argo_addr_t *peer, const struct sockaddr *addr,
 		int addrlen);
-int v4v_map_sa_to_v4va (v4v_addr_t *peer, const struct sockaddr *addr,
+int argo_map_sa_to_argoa (argo_addr_t *peer, const struct sockaddr *addr,
 		int addrlen);
 
 
 # ifdef DEBUG
-#  define v4v_ioctl(a,b,c) ({ int ret=ioctl(a,b,c); fprintf(stderr,"ioctl(%d,%s,%s)=%d\n",a,#b,#c,ret);perror("ioctl"); ret; })
+#  define argo_ioctl(a,b,c) ({ int ret=ioctl(a,b,c); fprintf(stderr,"ioctl(%d,%s,%s)=%d\n",a,#b,#c,ret);perror("ioctl"); ret; })
 #  define DEBUG_PRINTF(a...) fprintf(stderr,a);
 # else
-#  define v4v_ioctl(a,b,c) ioctl(a,b,c)
+#  define argo_ioctl(a,b,c) ioctl(a,b,c)
 #  define DEBUG_PRINTF(a...) 0
 # endif
 
-# define V4V_STREAM_DEV	"/dev/v4v_stream"
-# define V4V_DGRAM_DEV	"/dev/v4v_dgram"
+# define ARGO_STREAM_DEV	"/dev/argo_stream"
+# define ARGO_DGRAM_DEV	"/dev/argo_dgram"
 
 #endif /* __PROJECT_H__ */
