@@ -700,6 +700,27 @@ H_argo_notify(xen_argo_ring_data_t *rd)
     return HYPERVISOR_argo_op(XEN_ARGO_OP_notify, rd, NULL, 0, 0);
 }
 
+static int
+H_viptables_add(xen_argo_viptables_rule_t* rule, int position)
+{
+    return HYPERVISOR_argo_op(XEN_ARGO_OP_viptables_add, rule, NULL, 0,
+                              position);
+}
+
+static int
+H_viptables_del(xen_argo_viptables_rule_t* rule, int position)
+{
+    return HYPERVISOR_argo_op(XEN_ARGO_OP_viptables_del, rule, NULL, 0,
+                              position);
+}
+
+static int
+H_viptables_list(xen_argo_viptables_list_t *rules_list)
+{
+    return HYPERVISOR_argo_op(XEN_ARGO_OP_viptables_list, rules_list, NULL, 0,
+                              0);
+}
+
 /*********************port/ring uniqueness **********/
 
 /*Need to hold write lock for all of these*/
@@ -1537,6 +1558,28 @@ argo_notify(void)
 
     argo_kfree (d);
     DEBUG_APPLE;
+}
+
+/***********************  viptables ********************/
+static int
+viptables_add(struct argo_private *p, struct xen_argo_viptables_rule* rule,
+              int position)
+{
+    return H_viptables_add(rule, position);
+}
+
+static int
+viptables_del(struct argo_private *p, struct xen_argo_viptables_rule* rule,
+              int position)
+{
+    return H_viptables_del(rule, position);
+}
+
+static int
+viptables_list(struct argo_private *p,
+               struct xen_argo_viptables_list *rules_list)
+{
+    return H_viptables_list(rules_list);
 }
 
 /***********************  state machines ********************/
@@ -3816,6 +3859,65 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                     return -EFAULT;
             } else
                 rc = argo_recvfrom (p, a.buf, a.len, a.flags, NULL, nonblock);
+        }
+        break;
+        case ARGOIOCVIPTABLESADD:
+        DEBUG_APPLE;
+        {
+            struct viptables_rule_pos rule_pos;
+            struct xen_argo_viptables_rule rule;
+
+            if ( copy_from_user(&rule_pos, (void __user *)arg,
+                                sizeof(struct viptables_rule_pos)) ||
+                 copy_from_user(&rule, rule_pos.rule,
+                                sizeof(struct xen_argo_viptables_rule)) )
+                return -EFAULT;
+
+            rc = viptables_add(p, &rule, rule_pos.position);
+        }
+        break;
+        case ARGOIOCVIPTABLESDEL:
+        DEBUG_APPLE;
+        {
+            struct viptables_rule_pos rule_pos;
+            struct xen_argo_viptables_rule rule;
+
+            if ( copy_from_user(&rule_pos, (void __user *)arg,
+                                sizeof(struct viptables_rule_pos)) )
+                return -EFAULT;
+
+            if ( rule_pos.rule )
+            {
+                if ( copy_from_user(&rule, rule_pos.rule,
+                                    sizeof(struct xen_argo_viptables_rule)) )
+                    return -EFAULT;
+
+                rc = viptables_del(p, &rule, rule_pos.position);
+            }
+            else
+                rc = viptables_del(p, NULL, rule_pos.position);
+        }
+        break;
+        case ARGOIOCVIPTABLESLIST:
+        DEBUG_APPLE;
+        {
+            struct xen_argo_viptables_list rules_list;
+
+            if ( !access_ok(VERIFY_WRITE, (void __user *)arg,
+                            sizeof (struct xen_argo_viptables_list)) )
+                return -EFAULT;
+
+            if ( get_user(rules_list.nrules,
+                          &((struct xen_argo_viptables_list *)arg)->nrules) )
+                return -EFAULT;
+
+            rc = viptables_list(p, &rules_list);
+            if ( rc )
+                return rc;
+
+            if ( copy_to_user((void __user *)arg, &rules_list,
+                              sizeof(struct xen_argo_viptables_list)) )
+              return -EFAULT;
         }
         break;
         default:
