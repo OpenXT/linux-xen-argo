@@ -398,3 +398,124 @@ argo_getsockopt (int fd, int level, int optname,
   errno = ENOPROTOOPT;
   return -1;
 }
+
+int
+viptables_add (int fd, xen_argo_viptables_rule_t* rule, int position)
+{
+  int ret;
+  struct viptables_rule_pos rule_pos;
+
+  mlock (rule, sizeof(xen_argo_viptables_rule_t));
+  rule_pos.rule = rule;
+  rule_pos.position = position;
+
+  ret = argo_ioctl (fd, ARGOIOCVIPTABLESADD, &rule_pos);
+
+  munlock (rule, sizeof(xen_argo_viptables_rule_t));
+
+  return ret;
+}
+
+int
+viptables_del (int fd, xen_argo_viptables_rule_t* rule, int position)
+{
+  int ret;
+
+  struct viptables_rule_pos rule_pos;
+
+  if (rule != NULL)
+    mlock (rule, sizeof(xen_argo_viptables_rule_t));
+
+  rule_pos.rule = rule;
+  rule_pos.position = position;
+
+  ret = argo_ioctl (fd, ARGOIOCVIPTABLESDEL, &rule_pos);
+
+  if (rule != NULL)
+    munlock (rule, sizeof(xen_argo_viptables_rule_t));
+
+  return ret;
+}
+
+int
+viptables_flush (int fd)
+{
+  int ret;
+
+  struct viptables_rule_pos rule_pos;
+
+  rule_pos.rule = NULL;
+  rule_pos.position = -1;
+
+  ret = argo_ioctl (fd, ARGOIOCVIPTABLESDEL, &rule_pos);
+
+  return ret;
+}
+
+static void
+viptables_print_rule(struct xen_argo_viptables_rule *rule)
+{
+  if (rule->accept == 1)
+    printf("ACCEPT");
+  else
+    printf("REJECT");
+
+  printf(" ");
+
+  if (rule->src.domain_id == DOMID_INVALID)
+    printf("*");
+  else
+    printf("%i", rule->src.domain_id);
+
+  printf(":");
+
+  if (rule->src.aport == XEN_ARGO_PORT_ANY)
+    printf("*");
+  else
+    printf("%i", rule->src.aport);
+
+  printf(" -> ");
+
+  if (rule->dst.domain_id == DOMID_INVALID)
+    printf("*");
+  else
+    printf("%i", rule->dst.domain_id);
+
+  printf(":");
+
+  if (rule->dst.aport == XEN_ARGO_PORT_ANY)
+    printf("*");
+  else
+    printf("%i", rule->dst.aport);
+
+  printf("\n");
+}
+
+int
+viptables_list (int fd)
+{
+  int ret, i, total_rules_printed = 0, rules_i = 1;
+
+  struct xen_argo_viptables_list rules_list;
+  memset(&rules_list, 0, sizeof (rules_list));
+
+  do
+  {
+      rules_list.nrules = total_rules_printed;
+      ret = argo_ioctl (fd, ARGOIOCVIPTABLESLIST, &rules_list);
+
+      if (ret != 0)
+          return ret;
+
+      for (i = 0; i < rules_list.nrules; ++i)
+      {
+          printf("%i : ", rules_i++);
+          viptables_print_rule(&rules_list.rules[i]);
+      }
+
+      total_rules_printed += rules_list.nrules;
+
+  } while (rules_list.nrules == XEN_ARGO_VIPTABLES_LIST_SIZE);
+
+  return ret;
+}

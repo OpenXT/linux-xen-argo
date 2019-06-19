@@ -43,6 +43,8 @@
 /* Fixed-width type for "argo port" number. Nothing to do with evtchns. */
 typedef uint32_t xen_argo_port_t;
 
+#define XEN_ARGO_PORT_ANY 0xffffffffU
+
 /* gfn type: 64-bit fixed-width on all architectures */
 typedef uint64_t xen_argo_gfn_t;
 
@@ -166,6 +168,21 @@ struct xen_argo_ring_message_header
 #endif
 };
 
+typedef struct xen_argo_viptables_rule
+{
+    struct xen_argo_addr src;
+    struct xen_argo_addr dst;
+    uint32_t accept;
+} xen_argo_viptables_rule_t;
+
+#define XEN_ARGO_VIPTABLES_LIST_SIZE 8
+
+typedef struct xen_argo_viptables_list
+{
+    struct xen_argo_viptables_rule rules[XEN_ARGO_VIPTABLES_LIST_SIZE];
+    uint32_t nrules;
+} xen_argo_viptables_list_t;
+
 /*
  * Hypercall operations
  */
@@ -274,5 +291,20 @@ struct xen_argo_ring_message_header
  * arg4: 0 (ZERO)
  */
 #define XEN_ARGO_OP_notify              4
+
+/*
+ * XEN_ARGO_OP_viptables_add
+ */
+#define XEN_ARGO_OP_viptables_add       6
+
+/*
+ * XEN_ARGO_OP_viptables_del
+ */
+#define XEN_ARGO_OP_viptables_del       7
+
+/*
+ * XEN_ARGO_OP_viptables_list
+ */
+#define XEN_ARGO_OP_viptables_list      8
 
 #endif

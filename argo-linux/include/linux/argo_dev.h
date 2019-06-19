@@ -58,6 +58,11 @@ struct argo_ring_id {
 	xen_argo_port_t aport;
 };
 
+struct viptables_rule_pos {
+    struct xen_argo_viptables_rule* rule;
+    int position;
+};
+
 #define ARGO_TYPE 'W'
 
 #define ARGOIOCSETRINGSIZE 	_IOW (ARGO_TYPE,  1, uint32_t)
@@ -74,5 +79,8 @@ struct argo_ring_id {
 #define ARGOIOCSEND32		_IOW (ARGO_TYPE,  9, struct argo_dev_32)
 #define ARGOIOCRECV32		_IOW (ARGO_TYPE, 10, struct argo_dev_32)
 #define ARGOIOCGETSOCKTYPE	_IOW (ARGO_TYPE, 11, int)
+#define ARGOIOCVIPTABLESADD  _IOW (ARGO_TYPE, 12, struct viptables_rule_pos)
+#define ARGOIOCVIPTABLESDEL  _IOW (ARGO_TYPE, 13, struct viptables_rule_pos)
+#define ARGOIOCVIPTABLESLIST _IOW (ARGO_TYPE, 14, uint32_t) /*unused args */
 
 #endif

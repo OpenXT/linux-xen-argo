@@ -60,6 +60,10 @@ ssize_t argo_recvfrom(int fd, void *buf, size_t len, int flags, xen_argo_addr_t 
 int argo_getsockname(int fd, xen_argo_addr_t *out_addr, domid_t *out_partner_id);
 int argo_getpeername(int fd, xen_argo_addr_t *out_addr);
 int argo_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
+int viptables_add (int fd, xen_argo_viptables_rule_t *rule, int position);
+int viptables_del (int fd, xen_argo_viptables_rule_t *rule, int position);
+int viptables_flush (int fd);
+int viptables_list (int fd);
 
 # ifdef __cplusplus
 }
