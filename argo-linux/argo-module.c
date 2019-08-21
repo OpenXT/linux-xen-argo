@@ -955,11 +955,15 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     memset (r, 0, sizeof(struct ring));
     DEBUG_APPLE;
 
+#ifdef ARGO_DEBUG
     printk(KERN_ERR "new_ring: %d\n", sponsor->desired_ring_size);
+#endif
 
     ret = allocate_ring(r, sponsor->desired_ring_size);
 
+#ifdef ARGO_DEBUG
     printk(KERN_ERR "new_ring: allocate_ring ret: %d\n", ret);
+#endif
 
     DEBUG_APPLE;
     if ( ret )
@@ -2859,8 +2863,10 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
     }
 
     DEBUG_APPLE;
+#ifdef ARGO_DEBUG
     printk(KERN_ERR "argo_bind: %d (d: %d) (s: %d)\n", p->ptype,
            ARGO_PTYPE_DGRAM, ARGO_PTYPE_STREAM);
+#endif
 
     switch (p->ptype)
     {
@@ -4235,7 +4241,9 @@ argo_probe(struct platform_device *dev)
     int err = 0;
     int ret;
 
+#ifdef ARGO_DEBUG
     printk(KERN_ERR "albatross: 1\n");
+#endif
 
     ret = setup_fs ();
     if (ret)
