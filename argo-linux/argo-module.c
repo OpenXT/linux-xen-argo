@@ -3776,7 +3776,8 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                 {
                     struct argo_ring_id id;
                     memset(&id, 0, sizeof(id));
-                    id.partner_id = XEN_ARGO_DOMID_ANY;
+                    id.partner_id = arg ? connect_addr.domain_id :
+                                          XEN_ARGO_DOMID_ANY;
                     id.domain_id = XEN_ARGO_DOMID_ANY;
                     id.aport = 0;
                     rc = argo_bind(p, &id);
