@@ -89,6 +89,9 @@
 #include <linux/mount.h>
 #include <linux/dcache.h>
 #include <linux/slab.h>
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(5,3,0) )
+#include <linux/pseudo_fs.h>
+#endif
 
 #define XEN_ARGO_ROUNDUP(x) roundup((x), XEN_ARGO_MSG_SLOT_SIZE)
 
@@ -1976,6 +1979,7 @@ static struct vfsmount *argo_mnt = NULL;
 static const struct file_operations argo_fops_stream;
 static const struct dentry_operations argofs_dentry_operations;
 
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0) )
 static struct dentry *
 argofs_mount_pseudo(struct file_system_type *fs_type, int flags,
         const char *dev_name, void *data)
@@ -1984,10 +1988,27 @@ argofs_mount_pseudo(struct file_system_type *fs_type, int flags,
                         ARGOFS_MAGIC);
 }
 
+#else /* LINUX_VERSION_CODE >= KERNEL_VERSION(5,3,0) */
+static int argofs_init_fs_context(struct fs_context *fc)
+{
+    struct pseudo_fs_context *ctx;
+
+    ctx = init_pseudo(fc, ARGOFS_MAGIC);
+    if (!ctx)
+        return -ENOMEM;
+    ctx->dops = &argofs_dentry_operations;
+    return 0;
+}
+#endif
+
 static struct file_system_type argo_fs = {
     /* No owner field so module can be unloaded */
     .name = "argofs",
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0) )
     .mount = argofs_mount_pseudo,
+#else /* LINUX_VERSION_CODE >= KERNEL_VERSION(5,3,0) */
+    .init_fs_context = argofs_init_fs_context,
+#endif
     .kill_sb = kill_litter_super
 };
 
