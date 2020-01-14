@@ -1632,6 +1632,7 @@ connector_state_machine(struct argo_private *p, struct argo_stream_header *sh)
                 p->pending_error = -ECONNREFUSED;
                 argo_spin_unlock(&p->pending_recv_lock);
             }
+                /* fall through */
             case ARGO_STATE_CONNECTED:
             {
                 p->state = ARGO_STATE_DISCONNECTED;
