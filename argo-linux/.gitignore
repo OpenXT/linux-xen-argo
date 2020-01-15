@@ -9,3 +9,7 @@ Module.symvers
 .tmp_versions
 tags
 cscope.*
+*.a
+*.a.cmd
+*.mod
+*.mod.cmd
