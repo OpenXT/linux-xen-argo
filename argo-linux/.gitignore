@@ -6,6 +6,7 @@ modules.order
 Module.symvers
 *.o
 *.o.cmd
+*.o.d
 .tmp_versions
 tags
 cscope.*
