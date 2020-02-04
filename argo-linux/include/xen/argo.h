@@ -60,9 +60,9 @@ typedef uint64_t xen_argo_gfn_t;
 typedef struct xen_argo_iov
 {
 #ifdef XEN_GUEST_HANDLE
-    XEN_GUEST_HANDLE(uint8) iov_hnd;
+    XEN_GUEST_HANDLE(const_uint8) iov_hnd;
 #else
-    uint8_t *iov_hnd;
+    const uint8_t *iov_hnd;
 #ifdef CONFIG_ARM /* FIXME: 32-bit ARM only */
     uint32_t pad2;
 #endif
