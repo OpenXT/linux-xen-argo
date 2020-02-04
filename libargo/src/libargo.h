@@ -26,7 +26,7 @@ extern "C" {
 
 # include <stdint.h>
 # define ARGO_EXCLUDE_INTERNAL
-# include <xen/argo.h>
+# include <linux/argo.h>
 # include <sys/socket.h>
 
 # define PF_XENARGO      13398		/*An unimaginative constant*/
