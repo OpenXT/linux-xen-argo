@@ -3114,7 +3114,9 @@ allocate_fd_with_private (void *private)
     int fd;
     const char * name = "";
     struct file *f;
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0) )
     struct path path;
+#endif
     struct inode *ind;
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0))
