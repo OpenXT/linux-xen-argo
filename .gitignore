@@ -1,7 +1,0 @@
-# Debuild.
-/libv4v_*.dsc
-/libv4v_*.tar.*z
-/libv4v_*_*.build
-/libv4v_*_*.changes
-/libv4v_*_*.deb
-

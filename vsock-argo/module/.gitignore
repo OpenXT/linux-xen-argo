@@ -8,3 +8,7 @@ Module.symvers
 *.o.d
 *.o.cmd
 .tmp_versions
+*.a
+*.a.cmd
+*.mod
+*.mod.cmd
