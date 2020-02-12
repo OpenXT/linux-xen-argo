@@ -73,7 +73,7 @@
 #endif
 #endif /* XC_KERNEL */
 
-#include "argo.h"
+#include "argo_hypercall.h"
 #include <xen/evtchn.h>
 #include <xen/argo.h>
 #include <linux/argo_dev.h>
