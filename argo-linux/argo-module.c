@@ -3112,7 +3112,11 @@ static int
 allocate_fd_with_private (void *private)
 {
     int fd;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0))
+    const struct qstr name = { .name = "" };
+#else
     const char * name = "";
+#endif
     struct file *f;
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0) )
     struct path path;
