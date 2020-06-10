@@ -101,8 +101,6 @@
 
 #define XEN_ARGO_ROUNDUP(x) roundup((x), XEN_ARGO_MSG_SLOT_SIZE)
 
-#define MOAN do { printk(KERN_ERR "%s:%d MOAN called\n",__FILE__,__LINE__); } while (1==0)
-
 #define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
 
 #define DEBUG_ORANGE(a) do { printk(KERN_ERR  "%s %s %s:%d cpu%d pid %d\n",a,__PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id(),current->pid); } while (1==0)
@@ -119,7 +117,6 @@
 #define ARGO_TRACE ARGO_LOG("TRACE", "%s %s:%d cpu%d pid %d",__PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id(),current->pid)
 #define ARGO_DEBUG(va_msg, ...) ARGO_LOG("DEBUG", va_msg, ##__VA_ARGS__)
 
-#define DEBUG_BANANA DEBUG_ORANGE("BANANA")
 #define DEBUG_APPLE DEBUG_ORANGE("")
 #define lock2(a,b) do { printk(KERN_ERR  "%s(%s) %s %s:%d cpu%d\n",#a,#b, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b); } while (1==0)
 #define lock3(a,b,c) do { printk(KERN_ERR  "%s(%s,%s) %s %s:%d cpu%d\n",#a,#b,#c, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b,c); } while (1==0)
@@ -131,7 +128,6 @@
 #define ARGO_TRACE (void)0
 #define ARGO_DEBUG(va_msg, ...) (void)0
 
-#define DEBUG_BANANA (void)0
 #define DEBUG_APPLE (void)0
 #define lock2(a,b) a(b)
 #define lock3(a,b,c) a(b,c)
@@ -878,7 +874,7 @@ allocate_ring(struct ring *r, int ring_len)
              (ring_len != XEN_ARGO_ROUNDUP(ring_len)) )
         {
             ARGO_DEBUG ("ring_len=%d\n", ring_len);
-            DEBUG_BANANA;
+            DEBUG_APPLE;
             ret = -EINVAL;
             break;
         }
@@ -893,7 +889,7 @@ allocate_ring(struct ring *r, int ring_len)
         r->ring = vmalloc(len);
         if ( !r->ring )
         {
-            DEBUG_BANANA;
+            DEBUG_APPLE;
             ret = -ENOMEM;
             break;
         }
@@ -910,7 +906,7 @@ allocate_ring(struct ring *r, int ring_len)
         ret = allocate_gfn_array(r);
         if ( ret )
         {
-            DEBUG_BANANA;
+            DEBUG_APPLE;
             break;
         }
         return 0;
@@ -933,7 +929,7 @@ allocate_ring(struct ring *r, int ring_len)
 static void
 recover_ring(struct ring *r)
 {
-    DEBUG_BANANA;
+    DEBUG_APPLE;
 
     /*It's all gone horribly wrong*/
     WARN(1, "argo: something went horribly wrong in a ring - dumping and attempting a recovery\n");
@@ -1081,9 +1077,9 @@ delete_ring(struct ring *r)
 {
     int ret;
     if ( r->sponsor )
-        MOAN;
+        DEBUG_APPLE;
     if ( !list_empty (&r->privates) )
-        MOAN;
+        DEBUG_APPLE;
 
     list_del (&r->node);
 
@@ -1290,7 +1286,7 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     {
         argo_spin_unlock_irqrestore (&pending_xmit_lock, flags);
         ARGO_ERROR("Out of memory trying to queue an xmit of %zu bytes\n", len);
-        DEBUG_BANANA;
+        DEBUG_APPLE;
         return -ENOMEM;
     }
 
@@ -1469,10 +1465,10 @@ argo_notify(void)
     if ( H_argo_notify(d) )
     {
         DEBUG_APPLE;
-        DEBUG_BANANA;
+        DEBUG_APPLE;
         argo_kfree(d);
         argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
-        MOAN;
+        DEBUG_APPLE;
         return;
     }
 
@@ -1669,7 +1665,7 @@ connector_interrupt(struct ring *r)
 
     if ( !r->sponsor )
     {
-        MOAN;
+        DEBUG_APPLE;
         return -1;
     }
 
@@ -3004,7 +3000,7 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
             if ( (peer->domain_id != p->peer.domain_id) ||
                  (peer->aport != p->peer.aport) )
             {
-                DEBUG_BANANA;
+                DEBUG_APPLE;
                 return -EINVAL;
             }
             else
@@ -3015,7 +3011,7 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
             if ( (peer->domain_id != p->peer.domain_id) ||
                  (peer->aport != p->peer.aport) )
             {
-                DEBUG_BANANA;
+                DEBUG_APPLE;
                 return -EINVAL;
             }
             DEBUG_APPLE;
@@ -3163,7 +3159,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
     if ( p->state != ARGO_STATE_LISTENING )
     {
-        DEBUG_BANANA;
+        DEBUG_APPLE;
         return -EINVAL;
     }
 
@@ -3229,7 +3225,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
         if ( !a )
         {
-            DEBUG_BANANA;
+            DEBUG_APPLE;
             ret = -ENOMEM;
             break;
         }
@@ -3245,7 +3241,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
         {
             a->r = NULL;
             ret = -EINVAL;
-            DEBUG_BANANA;
+            DEBUG_APPLE;
             break;
         }
 
@@ -3395,18 +3391,18 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
                     rc = argo_send_stream(p, buf, len, nonblock);
                     break;
                 case ARGO_STATE_DISCONNECTED:
-                    DEBUG_BANANA;
+                    DEBUG_APPLE;
                     rc = -EPIPE;
                     break;
                 default:
-                    DEBUG_BANANA;
+                    DEBUG_APPLE;
                     return -EINVAL;
             }
             break;
         }
         default:
         {
-            DEBUG_BANANA;
+            DEBUG_APPLE;
             return -ENOTTY;
         }
     }
@@ -3461,13 +3457,13 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
                 }
                 case ARGO_STATE_DISCONNECTED:
                 {
-                    DEBUG_BANANA;
+                    DEBUG_APPLE;
                     rc = 0;
                     break;
                 }
                 default:
                 {
-                    DEBUG_BANANA;
+                    DEBUG_APPLE;
                     rc = -EINVAL;
                 }
             }
@@ -3933,7 +3929,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         break;
         default:
             ARGO_ERROR("unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd, ARGOIOCACCEPT);
-            DEBUG_BANANA;
+            DEBUG_APPLE;
     }
     DEBUG_APPLE;
     ARGO_DEBUG ("argo_ioctl cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
