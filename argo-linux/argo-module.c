@@ -103,7 +103,6 @@
 
 #define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
 
-#define DEBUG_ORANGE(a) do { printk(KERN_ERR  "%s %s %s:%d cpu%d pid %d\n",a,__PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id(),current->pid); } while (1==0)
 #define ARGO_LOG(tag, va_msg, ...) do { printk(KERN_ERR "argo: [%s] "va_msg, tag, ##__VA_ARGS__); } while (1==0)
 #define ARGO_INFO(va_msg, ...) ARGO_LOG("INFO", va_msg, ##__VA_ARGS__)
 #define ARGO_ERROR(va_msg, ...) ARGO_LOG("ERROR", va_msg, ##__VA_ARGS__)
@@ -117,7 +116,7 @@
 #define ARGO_TRACE ARGO_LOG("TRACE", "%s %s:%d cpu%d pid %d",__PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id(),current->pid)
 #define ARGO_DEBUG(va_msg, ...) ARGO_LOG("DEBUG", va_msg, ##__VA_ARGS__)
 
-#define DEBUG_APPLE DEBUG_ORANGE("")
+#define DEBUG_APPLE ARGO_TRACE
 #define lock2(a,b) do { printk(KERN_ERR  "%s(%s) %s %s:%d cpu%d\n",#a,#b, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b); } while (1==0)
 #define lock3(a,b,c) do { printk(KERN_ERR  "%s(%s,%s) %s %s:%d cpu%d\n",#a,#b,#c, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b,c); } while (1==0)
 #define DEBUG_RING(a) summary_ring(a)
@@ -1358,8 +1357,7 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
 
     DEBUG_RING(r);
     DEBUG_APPLE;
-    DEBUG_ORANGE ("inserting into pending");
-    ARGO_DEBUG ("IP p=%p k=%d s=%d c=%d\n",
+    ARGO_DEBUG ("inserting into pending: IP p=%p k=%d s=%d c=%d\n",
                 pending, k, p->state, atomic_read (&p->pending_recv_count));
     /*argo_hexdump (&pending->sh, len);*/
     DEBUG_APPLE;
@@ -1880,7 +1878,6 @@ argo_interrupt_rx(void)
 {
     struct ring *r;
 
-    //DEBUG_ORANGE("a");
     DEBUG_APPLE;
 
     argo_read_lock(&list_lock);
@@ -1936,7 +1933,7 @@ argo_interrupt(int irq, void *dev_id)
     unsigned long flags;
 
 #ifdef ARGO_DEBUG_ENABLED
-    DEBUG_ORANGE ("argo_interrupt");
+    DEBUG_APPLE;
 #endif
 
     argo_spin_lock_irqsave(&interrupt_lock, flags);
