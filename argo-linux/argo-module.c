@@ -871,7 +871,6 @@ allocate_ring(struct ring *r, int ring_len)
              (ring_len != XEN_ARGO_ROUNDUP(ring_len)) )
         {
             ARGO_DEBUG ("ring_len=%d\n", ring_len);
-            ARGO_TRACE;
             ret = -EINVAL;
             break;
         }
@@ -959,7 +958,6 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
         return -ENOMEM;
     ARGO_TRACE;
     memset (r, 0, sizeof(struct ring));
-    ARGO_TRACE;
 
     ARGO_DEBUG("new_ring: %d\n", sponsor->desired_ring_size);
 
@@ -967,7 +965,6 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
 
     ARGO_DEBUG("new_ring: allocate_ring ret: %d\n", ret);
 
-    ARGO_TRACE;
     if ( ret )
     {
         ARGO_TRACE;
@@ -996,7 +993,6 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
 
         ARGO_DEBUG ("port = %u\n", id.aport);
 
-        ARGO_TRACE;
         if ( !id.aport )
         {
             ARGO_TRACE;
@@ -1283,7 +1279,6 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     {
         argo_spin_unlock_irqrestore (&pending_xmit_lock, flags);
         ARGO_ERROR("Out of memory trying to queue an xmit of %zu bytes\n", len);
-        ARGO_TRACE;
         return -ENOMEM;
     }
 
@@ -1354,11 +1349,9 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
     ARGO_TRACE;
 
     DEBUG_RING(r);
-    ARGO_TRACE;
     ARGO_DEBUG ("inserting into pending: IP p=%p k=%d s=%d c=%d\n",
                 pending, k, p->state, atomic_read (&p->pending_recv_count));
     /*argo_hexdump (&pending->sh, len);*/
-    ARGO_TRACE;
 
     argo_spin_lock(&p->pending_recv_lock);
     list_add_tail(&pending->node, &p->pending_recv_list);
@@ -1460,7 +1453,6 @@ argo_notify(void)
 
     if ( H_argo_notify(d) )
     {
-        ARGO_TRACE;
         ARGO_TRACE;
         argo_kfree(d);
         argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
@@ -2110,7 +2102,6 @@ argo_try_sendv_sponsor(struct argo_private *p,
 
     ARGO_TRACE;
     ret = H_argo_sendv(&addr, dest, iovs, niov, protocol);
-    ARGO_TRACE;
     ARGO_DEBUG ("sendv returned %d\n", ret);
 
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
@@ -2469,7 +2460,6 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
     if (!src)
         src = &lsrc;
 
-    ARGO_TRACE;
     ARGO_DEBUG("argo_recvfrom_dgram %p %u %d %d \n", buf, len,
                nonblock, peek);
 
@@ -2773,7 +2763,6 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         }
     }
     ARGO_TRACE;
-    ARGO_TRACE;
 
     while ( len )
     {
@@ -2839,8 +2828,6 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         ARGO_TRACE;
     }
 
-    ARGO_TRACE;
-    ARGO_TRACE;
     ARGO_DEBUG ("count=%d\n", count);
     return count;
 }
@@ -2854,13 +2841,11 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
     ARGO_TRACE;
     if ( ring_id->domain_id != XEN_ARGO_DOMID_ANY )
     {
-        ARGO_TRACE;
         ARGO_DEBUG ("ring_id->domain(%x) != XEN_ARGO_DOMID_ANY(%x)",
                ring_id->domain_id, XEN_ARGO_DOMID_ANY);
         return -EINVAL;
     }
 
-    ARGO_TRACE;
     ARGO_DEBUG("argo_bind: %d (d: %d) (s: %d)\n", p->ptype,
            ARGO_PTYPE_DGRAM, ARGO_PTYPE_STREAM);
 
@@ -3922,9 +3907,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         break;
         default:
             ARGO_ERROR("unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd, ARGOIOCACCEPT);
-            ARGO_TRACE;
     }
-    ARGO_TRACE;
     ARGO_DEBUG ("argo_ioctl cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
     return rc;
 }
