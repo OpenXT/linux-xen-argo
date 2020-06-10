@@ -19,8 +19,6 @@
 
 #include "project.h"
 
-#define I_AM_A_BROKEN_WEENIE
-
 static size_t
 count_iov (struct iovec *iov, int n)
 {
@@ -179,15 +177,9 @@ argo_send (int fd, const void *buf, size_t len, int flags)
   op.flags = flags;
   op.addr = NULL;
 
-#ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
-#endif
-
   ret = argo_ioctl (fd, ARGOIOCSEND, &op);
-
-#ifdef I_AM_A_BROKEN_WEENIE
   munlock (op.buf, op.len);
-#endif
 
   return ret;
 }
@@ -212,20 +204,16 @@ argo_sendmsg (int fd, const struct msghdr * msg, int flags)
 
   linearize_iov (op.buf, msg->msg_iov, msg->msg_iovlen);
 
-#ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
   if (op.addr)
     mlock (op.addr, sizeof (xen_argo_addr_t));
-#endif
 
   //send is all in kernel
   ret = argo_ioctl (fd, ARGOIOCSEND, &op);
 
-#ifdef I_AM_A_BROKEN_WEENIE
   if (op.addr)
     munlock (op.addr, sizeof (xen_argo_addr_t));
   munlock (op.buf, op.len);
-#endif
 
   free (op.buf);
 
@@ -244,19 +232,15 @@ argo_sendto (int fd, const void *buf, size_t len, int flags,
   op.addr = dest_addr;
   op.flags = flags;
 
-#ifdef I_AM_A_BROKEN_WEENIE
   mlock (op.buf, op.len);
   if (op.addr)
     mlock (op.addr, sizeof (xen_argo_addr_t));
-#endif
 
   ret = argo_ioctl (fd, ARGOIOCSEND, &op);
 
-#ifdef I_AM_A_BROKEN_WEENIE
   if (op.addr)
     munlock (op.addr, sizeof (xen_argo_addr_t));
   munlock (op.buf, op.len);
-#endif
 
   return ret;
 }
