@@ -103,8 +103,6 @@
 
 #define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
 
-#define DEBUG_ORANGE(a) do { printk(KERN_ERR  "%s %s %s:%d cpu%d pid %d\n",a,__PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id(),current->pid); } while (1==0)
-
 /*#define ARGO_DEBUG 1*/
 #undef ARGO_DEBUG
 #undef ARGO_DEBUG_LOCKS
@@ -115,7 +113,7 @@
     printk(KERN_ERR  "%s:%d cpu%d pid %d\n",__PRETTY_FUNCTION__,__LINE__,raw_smp_processor_id(),current->pid);\
 } while (1==0)
 
-#define DEBUG_APPLE DEBUG_ORANGE("")
+#define DEBUG_APPLE ARGO_TRACE
 #define lock2(a,b) do { printk(KERN_ERR  "%s(%s) %s %s:%d cpu%d\n",#a,#b, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b); } while (1==0)
 #define lock3(a,b,c) do { printk(KERN_ERR  "%s(%s,%s) %s %s:%d cpu%d\n",#a,#b,#c, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b,c); } while (1==0)
 #define DEBUG_RING(a) summary_ring(a)
@@ -1371,9 +1369,8 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
     DEBUG_APPLE;
 
 #ifdef ARGO_DEBUG
-    DEBUG_ORANGE ("inserting into pending");
-    printk(KERN_ERR "IP p=%p k=%d s=%d c=%d\n", pending, k, p->state,
-           atomic_read (&p->pending_recv_count));
+    printk(KERN_ERR "inserting into pending: IP p=%p k=%d s=%d c=%d\n",
+           pending, k, p->state, atomic_read (&p->pending_recv_count));
     /*argo_hexdump (&pending->sh, len);*/
     DEBUG_APPLE;
 #endif
@@ -1894,7 +1891,6 @@ argo_interrupt_rx(void)
 {
     struct ring *r;
 
-    //DEBUG_ORANGE("a");
     DEBUG_APPLE;
 
     argo_read_lock(&list_lock);
@@ -1950,7 +1946,7 @@ argo_interrupt(int irq, void *dev_id)
     unsigned long flags;
 
 #ifdef ARGO_DEBUG
-    DEBUG_ORANGE ("argo_interrupt");
+    DEBUG_APPLE;
 #endif
 
     argo_spin_lock_irqsave(&interrupt_lock, flags);
