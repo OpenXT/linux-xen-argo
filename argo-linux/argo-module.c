@@ -113,6 +113,10 @@
 
 #ifdef ARGO_DEBUG
 
+#define ARGO_TRACE do {\
+    printk(KERN_ERR  "%s:%d cpu%d pid %d\n",__PRETTY_FUNCTION__,__LINE__,raw_smp_processor_id(),current->pid);\
+} while (1==0)
+
 #define DEBUG_BANANA DEBUG_ORANGE("BANANA")
 #define DEBUG_APPLE DEBUG_ORANGE("")
 #define lock2(a,b) do { printk(KERN_ERR  "%s(%s) %s %s:%d cpu%d\n",#a,#b, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b); } while (1==0)
@@ -121,6 +125,8 @@
 #define DEBUG_HEXDUMP(a,b) argo_hexdump(a,b)
 
 #else /* ! ARGO_DEBUG */
+
+#define ARGO_TRACE (void)0
 
 #define DEBUG_BANANA (void)0
 #define DEBUG_APPLE (void)0
