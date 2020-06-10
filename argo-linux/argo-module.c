@@ -188,8 +188,7 @@ do_spin_lock(argo_spinlock_t * l, int line)
             }
         }
 
-        printk(KERN_ERR
-               "argo_spin_lock at line %d is blocking on lock acquired at line %d\n",
+        ARGO_INFO("argo_spin_lock at line %d is blocking on lock acquired at line %d\n",
                line, l->line);
     }
 }
@@ -199,7 +198,7 @@ do_spin_unlock(argo_spinlock_t * l, int line)
 {
     if ( atomic_read (&l->lock) != 1 )
     {
-        printk(KERN_ERR "argo_spin_unlock at line %d called while lock=%d\n",
+        ARGO_INFO("argo_spin_unlock at line %d called while lock=%d\n",
                line, atomic_read (&l->lock));
         atomic_set (&l->lock, 0);
         return;
@@ -662,13 +661,13 @@ argo_hexdump (volatile void *_b, int len)
 static void
 summary_ring (struct ring *r)
 {
-    printk(KERN_ERR "ring at %p:\n", r);
+    ARGO_INFO("ring at %p:\n", r);
 
-    printk(KERN_ERR " xen_pfn_array_t at %p for %d:\n",
+    ARGO_INFO(" xen_pfn_array_t at %p for %d:\n",
            r->gfn_array, r->npfns);
 
-    printk(KERN_ERR " xen_argo_ring_t at %p:\n", r->ring);
-    printk(KERN_ERR "  r->rx_ptr=%d r->tx_ptr=%d r->len=%d\n",
+    ARGO_INFO(" xen_argo_ring_t at %p:\n", r->ring);
+    ARGO_INFO("  r->rx_ptr=%d r->tx_ptr=%d r->len=%d\n",
            r->ring->rx_ptr, r->ring->tx_ptr, r->len);
 }
 
@@ -808,12 +807,10 @@ register_ring(struct ring *r)
 
     /* flags are zero: allow reregistration of an existing ring */
 
-#ifdef ARGO_DEBUG_ENABLED
-  printk (KERN_ERR "%s:%d aport=%u domain_id=%d partner_id=%d\n",
+  ARGO_DEBUG ("%s:%d aport=%u domain_id=%d partner_id=%d\n",
           __FILE__, __LINE__,
           (unsigned int) r->id.aport,
           (int) r->id.domain_id, (int) r->id.partner_id);
-#endif
     reg.aport = r->id.aport;
     reg.partner_id = r->id.partner_id;
     reg.len = r->len;
@@ -880,9 +877,7 @@ allocate_ring(struct ring *r, int ring_len)
         if ( (ring_len > XEN_ARGO_MAX_RING_SIZE) ||
              (ring_len != XEN_ARGO_ROUNDUP(ring_len)) )
         {
-#ifdef ARGO_DEBUG_ENABLED
-            printk (KERN_ERR "ring_len=%d\n", ring_len);
-#endif
+            ARGO_DEBUG ("ring_len=%d\n", ring_len);
             DEBUG_BANANA;
             ret = -EINVAL;
             break;
@@ -973,15 +968,11 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     memset (r, 0, sizeof(struct ring));
     DEBUG_APPLE;
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "new_ring: %d\n", sponsor->desired_ring_size);
-#endif
+    ARGO_DEBUG("new_ring: %d\n", sponsor->desired_ring_size);
 
     ret = allocate_ring(r, sponsor->desired_ring_size);
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "new_ring: allocate_ring ret: %d\n", ret);
-#endif
+    ARGO_DEBUG("new_ring: allocate_ring ret: %d\n", ret);
 
     DEBUG_APPLE;
     if ( ret )
@@ -1010,9 +1001,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
             break;
         }
 
-#ifdef ARGO_DEBUG_ENABLED
-        printk(KERN_ERR "fox %u\n", id.aport);
-#endif
+        ARGO_DEBUG ("port = %u\n", id.aport);
 
         DEBUG_APPLE;
         if ( !id.aport )
@@ -1099,7 +1088,7 @@ delete_ring(struct ring *r)
     list_del (&r->node);
 
     if ( (ret = unregister_ring(r)) )
-        printk(KERN_ERR "unregister_ring hypercall failed: %d.\n", ret);
+        ARGO_ERROR("unregister_ring hypercall failed: %d.\n", ret);
 }
 
 
@@ -1200,8 +1189,7 @@ xmit_queue_wakeup_private(struct argo_ring_id *from,
     p = argo_kmalloc( sizeof(struct pending_xmit), GFP_ATOMIC );
     if ( !p )
     {
-        printk(KERN_ERR
-               "Out of memory trying to queue an xmit sponsor wakeup\n");
+        ARGO_ERROR("Out of memory trying to queue an xmit sponsor wakeup\n");
         return;
     }
     p->type = ARGO_PENDING_XMIT_WAITQ_MATCH_PRIVATES;
@@ -1250,8 +1238,7 @@ xmit_queue_wakeup_sponsor(struct argo_ring_id *from, xen_argo_addr_t * to, int l
     p = argo_kmalloc(sizeof(struct pending_xmit), GFP_ATOMIC);
     if ( !p )
     {
-        printk(KERN_ERR
-               "Out of memory trying to queue an xmit sponsor wakeup\n");
+        ARGO_ERROR("Out of memory trying to queue an xmit sponsor wakeup\n");
         return;
     }
     p->type = ARGO_PENDING_XMIT_WAITQ_MATCH_SPONSOR;
@@ -1302,8 +1289,7 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     if ( !p )
     {
         argo_spin_unlock_irqrestore (&pending_xmit_lock, flags);
-        printk(KERN_ERR
-               "Out of memory trying to queue an xmit of %zu bytes\n", len);
+        ARGO_ERROR("Out of memory trying to queue an xmit of %zu bytes\n", len);
         DEBUG_BANANA;
         return -ENOMEM;
     }
@@ -1376,14 +1362,11 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
 
     DEBUG_RING(r);
     DEBUG_APPLE;
-
-#ifdef ARGO_DEBUG_ENABLED
     DEBUG_ORANGE ("inserting into pending");
-    printk(KERN_ERR "IP p=%p k=%d s=%d c=%d\n", pending, k, p->state,
-           atomic_read (&p->pending_recv_count));
+    ARGO_DEBUG ("IP p=%p k=%d s=%d c=%d\n",
+                pending, k, p->state, atomic_read (&p->pending_recv_count));
     /*argo_hexdump (&pending->sh, len);*/
     DEBUG_APPLE;
-#endif
 
     argo_spin_lock(&p->pending_recv_lock);
     list_add_tail(&pending->node, &p->pending_recv_list);
@@ -2036,7 +2019,7 @@ setup_fs(void)
     ret = register_filesystem(&argo_fs);
     if ( ret )
     {
-        printk(KERN_ERR "argofs: couldn't register tedious filesystem thingy\n");
+        ARGO_ERROR("couldn't register filesystem\n");
         return ret;
     }
 
@@ -2045,7 +2028,7 @@ setup_fs(void)
     {
         unregister_filesystem(&argo_fs);
         ret = PTR_ERR(argo_mnt);
-        printk(KERN_ERR "argo: couldn't mount tedious filesystem thingy\n");
+        ARGO_ERROR("couldn't mount filesystem\n");
         return ret;
     }
 
@@ -2139,10 +2122,7 @@ argo_try_sendv_sponsor(struct argo_private *p,
     DEBUG_APPLE;
     ret = H_argo_sendv(&addr, dest, iovs, niov, protocol);
     DEBUG_APPLE;
-
-#ifdef ARGO_DEBUG_ENABLED
-    printk (KERN_ERR "sendv returned %d\n", ret);
-#endif
+    ARGO_DEBUG ("sendv returned %d\n", ret);
 
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
     if ( ret == -EAGAIN )
@@ -2501,10 +2481,8 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         src = &lsrc;
 
     DEBUG_APPLE;
-#ifdef ARGO_DEBUG_ENABLED
-    printk("FISHSOUP argo_recvfrom_dgram %p %u %d %d \n", buf, len,
-           nonblock, peek);
-#endif
+    ARGO_DEBUG("argo_recvfrom_dgram %p %u %d %d \n", buf, len,
+               nonblock, peek);
 
     argo_read_lock(&list_lock);
 
@@ -2679,7 +2657,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
             if ( !access_ok_wrapper(VERIFY_WRITE, buf, to_copy) )
             {
-                printk(KERN_ERR "ARGO - ERROR: buf invalid _buf=%p buf=%p len=%d to_copy=%zu count=%zu\n",
+                ARGO_ERROR("buf invalid _buf=%p buf=%p len=%d to_copy=%zu count=%zu\n",
                        _buf, buf, len, to_copy, count);
 
                 return count ? count: -EFAULT;
@@ -2687,7 +2665,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
             ret = copy_to_user(buf, &pending->data[pending->data_ptr], to_copy);
             if ( ret )
-                printk(KERN_ERR "ARGO - copy_to_user failed: buf: %p other: %p to_copy: %lu pending %p data_ptr %lu data: %p\n",
+                 ARGO_ERROR("copy_to_user failed: buf: %p other: %p to_copy: %lu pending %p data_ptr %lu data: %p\n",
                     buf, &pending->data[pending->data_ptr], to_copy, pending,
                     pending->data_ptr, pending->data);
                 /* FIXME: error exit action here? */
@@ -2704,11 +2682,10 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                 DEBUG_APPLE;
                 list_del (&pending->node);
 
-#ifdef ARGO_DEBUG_ENABLED
-                printk(KERN_ERR "OP p=%p k=%d s=%d c=%d\n", pending,
+                ARGO_DEBUG ("OP p=%p k=%d s=%d c=%d\n", pending,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
-#endif
+
                 argo_kfree (pending);
                 atomic_dec(&p->pending_recv_count);
 
@@ -2875,9 +2852,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
 
     DEBUG_APPLE;
     DEBUG_APPLE;
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "avacado count=%d\n", count);
-#endif
+    ARGO_DEBUG ("count=%d\n", count);
     return count;
 }
 
@@ -2891,19 +2866,14 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
     if ( ring_id->domain_id != XEN_ARGO_DOMID_ANY )
     {
         DEBUG_APPLE;
-
-#ifdef ARGO_DEBUG_ENABLED
-        printk(KERN_ERR "ring_id->domain(%x) != XEN_ARGO_DOMID_ANY(%x)",
+        ARGO_DEBUG ("ring_id->domain(%x) != XEN_ARGO_DOMID_ANY(%x)",
                ring_id->domain_id, XEN_ARGO_DOMID_ANY);
-#endif
         return -EINVAL;
     }
 
     DEBUG_APPLE;
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "argo_bind: %d (d: %d) (s: %d)\n", p->ptype,
+    ARGO_DEBUG("argo_bind: %d (d: %d) (s: %d)\n", p->ptype,
            ARGO_PTYPE_DGRAM, ARGO_PTYPE_STREAM);
-#endif
 
     switch (p->ptype)
     {
@@ -3321,9 +3291,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
                               ARGO_PROTO_STREAM);
 
         }
-#ifdef ARGO_DEBUG_ENABLED
-        printk (KERN_ERR "argo_accept priv %p => %p\n", p, a);
-#endif
+        ARGO_DEBUG ("argo_accept priv %p => %p\n", p, a);
 
         argo_kfree(r);
 
@@ -3375,9 +3343,7 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
     if ( !access_ok_wrapper(VERIFY_READ, buf, len) )
         return -EFAULT;
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "argo_sendto buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
-#endif
+    ARGO_DEBUG ("argo_sendto buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
 
     if ( flags & MSG_DONTWAIT )
         nonblock++;
@@ -3399,13 +3365,12 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
                 case ARGO_STATE_CONNECTED:
                     if ( addr )
                         return -EISCONN;
-#ifdef ARGO_DEBUG_ENABLED
-                    printk (KERN_ERR
-                      "KIWI trying send from connected udp socket to %d:%d from %d:%d\n",
+
+                    ARGO_DEBUG (
+                      "trying send from connected udp socket to %d:%d from %d:%d\n",
                       (int) p->peer.domain_id, (int) p->peer.aport,
                       (int) p->r->id.domain_id,
                       (int) p->r->id.aport);
-#endif
 
                     rc = argo_sendto_from_sponsor(p, buf, len, nonblock,
                                                   &p->peer, ARGO_PROTO_DGRAM);
@@ -3459,10 +3424,8 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
     int peek = 0;
     ssize_t rc = 0;
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "argo_recvfrom buff:%p len:%d nonblock:%d\n",
+    ARGO_DEBUG ("argo_recvfrom buff:%p len:%d nonblock:%d\n",
            buf, len, nonblock);
-#endif
  
     if ( !access_ok_wrapper (VERIFY_WRITE, buf, len) )
         return -EFAULT;
@@ -3543,9 +3506,7 @@ argo_open_dgram(struct inode *inode, struct file *f)
     INIT_LIST_HEAD(&p->pending_recv_list);
     atomic_set(&p->pending_recv_count, 0);
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "argo_open priv %p\n", p);
-#endif
+    ARGO_DEBUG("argo_open priv %p\n", p);
 
     f->private_data = p;
     f->f_flags = O_RDWR;
@@ -3577,9 +3538,7 @@ argo_open_stream(struct inode *inode, struct file *f)
     INIT_LIST_HEAD(&p->pending_recv_list);
     atomic_set(&p->pending_recv_count, 0);
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "argo_open priv %p\n", p);
-#endif
+    ARGO_DEBUG ("argo_open priv %p\n", p);
 
     f->private_data = p;
     f->f_flags = O_RDWR;
@@ -3738,9 +3697,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     int nonblock = f->f_flags & O_NONBLOCK;
     struct argo_private *p = f->private_data;
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk (KERN_ERR "argo_ioctl cmd=%x pid=%d\n", cmd, current->pid);
-#endif 
+    ARGO_DEBUG ("argo_ioctl cmd=%x pid=%d\n", cmd, current->pid);
     if (_IOC_TYPE (cmd) != ARGO_TYPE)
         return rc;
 
@@ -3975,14 +3932,11 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         }
         break;
         default:
-            printk(KERN_ERR "unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd,
-                   ARGOIOCACCEPT);
+            ARGO_ERROR("unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd, ARGOIOCACCEPT);
             DEBUG_BANANA;
     }
     DEBUG_APPLE;
-#ifdef ARGO_DEBUG_ENABLED
-    printk (KERN_ERR "argo_ioctl cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
-#endif
+    ARGO_DEBUG ("argo_ioctl cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
     return rc;
 }
 
@@ -4187,9 +4141,7 @@ bind_signal_virq(void)
     {
         unbind_signal_virq();
 
-#ifdef ARGO_DEBUG_ENABLED
-        printk(KERN_ERR "Bind error %d\n", result);
-#endif
+        ARGO_DEBUG ("Bind error %d\n", result);
         return result;
     }
 
@@ -4202,7 +4154,7 @@ bind_signal_virq(void)
 static void
 unbind_signal(void)
 {
-    printk(KERN_ERR "argo unbind_signal: virq\n");
+    ARGO_DEBUG("unbind_signal: virq\n");
     unbind_signal_virq();
 }
 
@@ -4211,7 +4163,7 @@ bind_signal(void)
 {
     int result;
 
-    printk(KERN_ERR "argo: bind_signal: using virq\n");
+    ARGO_DEBUG("bind_signal: using virq\n");
 
     result = bind_signal_virq();
 
@@ -4251,9 +4203,8 @@ argo_resume(struct platform_device *dev)
         refresh_gfn_array(r);
         if ( register_ring(r) )
         {
-            printk(KERN_ERR
-                   "Failed to re-register a argo ring on resume, aport=0x%08x\n",
-                    r->id.aport);
+            ARGO_ERROR("Failed to re-register a argo ring on resume, aport=0x%08x\n",
+                        r->id.aport);
         }
     }
 
@@ -4261,7 +4212,7 @@ argo_resume(struct platform_device *dev)
 
     if ( bind_signal() )
     {
-        printk(KERN_ERR "argo_resume: failed to bind argo signal\n");
+        ARGO_ERROR("argo_resume: failed to bind argo signal\n");
         return -ENODEV;
     }
     return 0;
@@ -4281,9 +4232,7 @@ argo_probe(struct platform_device *dev)
     int err = 0;
     int ret;
 
-#ifdef ARGO_DEBUG_ENABLED
-    printk(KERN_ERR "albatross: 1\n");
-#endif
+    ARGO_DEBUG("albatross: 1\n");
 
     ret = setup_fs ();
     if (ret)
@@ -4298,7 +4247,7 @@ argo_probe(struct platform_device *dev)
 
     if ( bind_signal() )
     {
-        printk(KERN_ERR "failed to bind argo signal\n");
+        ARGO_ERROR("failed to bind argo signal\n");
         unsetup_fs ();
         return -ENODEV;
     }
@@ -4306,7 +4255,7 @@ argo_probe(struct platform_device *dev)
     err = misc_register(&argo_miscdev_dgram);
     if ( err )
     {
-        printk(KERN_ERR "Could not register /dev/argo_dgram\n");
+        ARGO_ERROR("Could not register /dev/argo_dgram\n");
         unsetup_fs();
         return err;
     }
@@ -4314,12 +4263,12 @@ argo_probe(struct platform_device *dev)
     err = misc_register (&argo_miscdev_stream);
     if ( err )
     {
-        printk(KERN_ERR "Could not register /dev/argo_stream\n");
+        ARGO_ERROR("Could not register /dev/argo_stream\n");
         unsetup_fs();
         return err;
     }
 
-    printk (KERN_INFO "Xen ARGO device installed.\n");
+    ARGO_INFO("Xen ARGO device installed.\n");
     return 0;
 }
 
