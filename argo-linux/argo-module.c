@@ -101,11 +101,7 @@
 
 #define XEN_ARGO_ROUNDUP(x) roundup((x), XEN_ARGO_MSG_SLOT_SIZE)
 
-#define MOAN do { printk(KERN_ERR "%s:%d MOAN called\n",__FILE__,__LINE__); } while (1==0)
-
 #define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
-
-#define DEBUG_ORANGE(a) do { printk(KERN_ERR  "%s %s %s:%d cpu%d pid %d\n",a,__PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id(),current->pid); } while (1==0)
 
 /*#define ARGO_DEBUG 1*/
 #undef ARGO_DEBUG
@@ -113,8 +109,10 @@
 
 #ifdef ARGO_DEBUG
 
-#define DEBUG_BANANA DEBUG_ORANGE("BANANA")
-#define DEBUG_APPLE DEBUG_ORANGE("")
+#define ARGO_TRACE do {\
+    printk(KERN_ERR  "%s:%d cpu%d pid %d\n",__PRETTY_FUNCTION__,__LINE__,raw_smp_processor_id(),current->pid);\
+} while (1==0)
+
 #define lock2(a,b) do { printk(KERN_ERR  "%s(%s) %s %s:%d cpu%d\n",#a,#b, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b); } while (1==0)
 #define lock3(a,b,c) do { printk(KERN_ERR  "%s(%s,%s) %s %s:%d cpu%d\n",#a,#b,#c, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b,c); } while (1==0)
 #define DEBUG_RING(a) summary_ring(a)
@@ -122,8 +120,8 @@
 
 #else /* ! ARGO_DEBUG */
 
-#define DEBUG_BANANA (void)0
-#define DEBUG_APPLE (void)0
+#define ARGO_TRACE (void)0
+
 #define lock2(a,b) a(b)
 #define lock3(a,b,c) a(b,c)
 #define DEBUG_RING(a) (void)0
@@ -874,7 +872,7 @@ allocate_ring(struct ring *r, int ring_len)
 #ifdef ARGO_DEBUG
             printk (KERN_ERR "ring_len=%d\n", ring_len);
 #endif
-            DEBUG_BANANA;
+            ARGO_TRACE;
             ret = -EINVAL;
             break;
         }
@@ -889,7 +887,7 @@ allocate_ring(struct ring *r, int ring_len)
         r->ring = vmalloc(len);
         if ( !r->ring )
         {
-            DEBUG_BANANA;
+            ARGO_TRACE;
             ret = -ENOMEM;
             break;
         }
@@ -906,7 +904,7 @@ allocate_ring(struct ring *r, int ring_len)
         ret = allocate_gfn_array(r);
         if ( ret )
         {
-            DEBUG_BANANA;
+            ARGO_TRACE;
             break;
         }
         return 0;
@@ -929,7 +927,7 @@ allocate_ring(struct ring *r, int ring_len)
 static void
 recover_ring(struct ring *r)
 {
-    DEBUG_BANANA;
+    ARGO_TRACE;
 
     /*It's all gone horribly wrong*/
     WARN(1, "argo: something went horribly wrong in a ring - dumping and attempting a recovery\n");
@@ -949,20 +947,20 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     int ret;
     unsigned long flags;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( id.domain_id != XEN_ARGO_DOMID_ANY )
         return -EINVAL;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     r = argo_kmalloc(sizeof(struct ring), GFP_KERNEL);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     if ( !r )
         return -ENOMEM;
-    DEBUG_APPLE;
+    ARGO_TRACE;
     memset (r, 0, sizeof(struct ring));
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
 #ifdef ARGO_DEBUG
     printk(KERN_ERR "new_ring: %d\n", sponsor->desired_ring_size);
@@ -974,29 +972,29 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     printk(KERN_ERR "new_ring: allocate_ring ret: %d\n", ret);
 #endif
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     if ( ret )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         argo_kfree(r);
         return ret;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     INIT_LIST_HEAD(&r->privates);
     argo_spin_lock_init(&r->lock);
     atomic_set(&r->refcnt, 1);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     do
     {
         /* ret = -EINVAL; argo_kfree(r); return ret; DISABLE */
 
         argo_write_lock_irqsave (&list_lock, flags);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( sponsor->state != ARGO_STATE_IDLE )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             ret = -EINVAL;
             break;
         }
@@ -1005,27 +1003,27 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
         printk(KERN_ERR "fox %u\n", id.aport);
 #endif
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( !id.aport )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             id.aport = argo_find_spare_port_number ();
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( id.aport == ARGO_PORTS_EXHAUSTED )
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 ret = -ENOSPC;
                 break;
             }
         }
         else if ( argo_id_in_use (&id) )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             ret = -EADDRINUSE;
             break;
         }
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         r->id.domain_id = id.domain_id;
         r->id.aport = id.aport;
         r->id.partner_id = id.partner_id;
@@ -1035,37 +1033,37 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
         sponsor->state = ARGO_STATE_BOUND;
 
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         ret = register_ring(r);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( ret )
             break;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         list_add(&r->node, &ring_list);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         argo_write_unlock_irqrestore(&list_lock, flags);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         return 0;
     }
     while (0);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     argo_write_unlock_irqrestore(&list_lock, flags);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     vfree(r->ring);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     argo_kfree(r->gfn_array);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     argo_kfree(r);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     sponsor->r = NULL;
     sponsor->state = ARGO_STATE_IDLE;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     return ret;
 }
 
@@ -1083,9 +1081,9 @@ delete_ring(struct ring *r)
 {
     int ret;
     if ( r->sponsor )
-        MOAN;
+        ARGO_TRACE;
     if ( !list_empty (&r->privates) )
-        MOAN;
+        ARGO_TRACE;
 
     list_del (&r->node);
 
@@ -1263,9 +1261,9 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     struct pending_xmit *p;
     xen_argo_addr_t addr;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     argo_spin_lock_irqsave (&pending_xmit_lock, flags);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     iov.iov_hnd = buf;
 #ifdef CONFIG_ARM
@@ -1280,14 +1278,14 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     addr.pad = 0;
 
     ret = H_argo_sendv(&addr, to, &iov, 1, protocol);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     if (ret != -EAGAIN)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
         return ret;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     p = argo_kmalloc(sizeof(struct pending_xmit) + len, GFP_ATOMIC);
     if ( !p )
@@ -1295,7 +1293,7 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
         argo_spin_unlock_irqrestore (&pending_xmit_lock, flags);
         printk(KERN_ERR
                "Out of memory trying to queue an xmit of %zu bytes\n", len);
-        DEBUG_BANANA;
+        ARGO_TRACE;
         return -ENOMEM;
     }
 
@@ -1336,7 +1334,7 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
 {
     struct pending_recv *pending;
     int k;
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     /* Too much queued? Let the ring take the strain */
     if ( atomic_read(&p->pending_recv_count) > MAX_PENDING_RECVS )
@@ -1347,41 +1345,40 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
 
         return -1;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     pending = argo_kmalloc(sizeof(struct pending_recv) -
                              sizeof(struct argo_stream_header) + len,
                            GFP_ATOMIC);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     if ( !pending )
         return -1;
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     pending->data_ptr = 0;
     pending->data_len = len - sizeof(struct argo_stream_header);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     k = argo_copy_out(r->ring, r->len, &pending->from, NULL, &pending->sh,
                       len, 1);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     DEBUG_RING(r);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
 #ifdef ARGO_DEBUG
-    DEBUG_ORANGE ("inserting into pending");
-    printk(KERN_ERR "IP p=%p k=%d s=%d c=%d\n", pending, k, p->state,
-           atomic_read (&p->pending_recv_count));
+    printk(KERN_ERR "inserting into pending: IP p=%p k=%d s=%d c=%d\n",
+           pending, k, p->state, atomic_read (&p->pending_recv_count));
     /*argo_hexdump (&pending->sh, len);*/
-    DEBUG_APPLE;
 #endif
+    ARGO_TRACE;
 
     argo_spin_lock(&p->pending_recv_lock);
     list_add_tail(&pending->node, &p->pending_recv_list);
     atomic_inc(&p->pending_recv_count);
     p->full = 0;
     argo_spin_unlock (&p->pending_recv_lock);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     return 0;
 }
@@ -1441,28 +1438,28 @@ argo_notify(void)
     xen_argo_ring_data_t *d;
     int i = 0;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     nent = atomic_read(&pending_xmit_count);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     d = argo_kmalloc(sizeof(xen_argo_ring_data_t) +
                      nent * sizeof(xen_argo_ring_data_ent_t), GFP_ATOMIC);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     if ( !d )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
         return;
     }
 
     memset(d, 0, sizeof(xen_argo_ring_data_t));
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     list_for_each_entry(p, &pending_xmit_list, node)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if (i != nent)
         {
             d->data[i].ring = p->to;
@@ -1472,29 +1469,28 @@ argo_notify(void)
     }
 
     d->nent = i;
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( H_argo_notify(d) )
     {
-        DEBUG_APPLE;
-        DEBUG_BANANA;
+        ARGO_TRACE;
         argo_kfree(d);
         argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
-        MOAN;
+        ARGO_TRACE;
         return;
     }
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     i = 0;
     list_for_each_entry_safe(p, n, &pending_xmit_list, node)
     {
         int processed = 1;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( i == nent )
             continue;
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if (d->data[i].flags & XEN_ARGO_RING_EXISTS)
         {
@@ -1530,7 +1526,7 @@ argo_notify(void)
                 }
                 case ARGO_PENDING_XMIT_WAITQ_MATCH_SPONSOR:
                 {
-                    DEBUG_APPLE;
+                    ARGO_TRACE;
                     if ( d->data[i].flags & XEN_ARGO_RING_SUFFICIENT )
                     {
     //  printk(KERN_ERR "wanted %d flags %x - doing wakeup and removing from q\n",d->data[i].space_required,d->data[i].flags); 
@@ -1545,7 +1541,7 @@ argo_notify(void)
                 }
                 case ARGO_PENDING_XMIT_WAITQ_MATCH_PRIVATES:
                 {
-                    DEBUG_APPLE;
+                    ARGO_TRACE;
                     if (d->data[i].flags & XEN_ARGO_RING_SUFFICIENT)
                         wakeup_privates (&p->from, &p->to, p->conid);
                     else
@@ -1561,16 +1557,16 @@ argo_notify(void)
             atomic_dec(&pending_xmit_count);
             kfree(p);
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
         i++;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_kfree (d);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 }
 
 /***********************  viptables ********************/
@@ -1677,7 +1673,7 @@ connector_interrupt(struct ring *r)
 
     if ( !r->sponsor )
     {
-        MOAN;
+        ARGO_TRACE;
         return -1;
     }
 
@@ -1687,7 +1683,7 @@ connector_interrupt(struct ring *r)
 
     if ( msg_len == -1 )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         recover_ring(r);
         return ret;
     }
@@ -1738,11 +1734,11 @@ acceptor_interrupt (struct argo_private *p, struct ring *r,
     xen_argo_addr_t from;
     int ret = 0;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     /*This is an acceptor: no-one should send SYN or ACK, so send RST back */
     if ( sh->flags & (ARGO_SHF_SYN | ARGO_SHF_ACK) )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         msg_len = argo_copy_out(r->ring, r->len, &from, NULL, sh,
                                 sizeof(*sh), 1);
         if ( msg_len == sizeof(*sh) )
@@ -1750,7 +1746,7 @@ acceptor_interrupt (struct argo_private *p, struct ring *r,
         return ret;
     }
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     /* Is it all over? */
     if ( sh->flags & ARGO_SHF_RST )
     {
@@ -1762,12 +1758,12 @@ acceptor_interrupt (struct argo_private *p, struct ring *r,
         return ret;
     }
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     /*Copy the message out */
     ret = copy_into_pending_recv(r, msg_len, p);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     wake_up_interruptible_all(&p->readq);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     return ret;
 }
 
@@ -1781,45 +1777,45 @@ listener_interrupt(struct ring *r)
     struct argo_private *p;
     xen_argo_addr_t from;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     DEBUG_RING(r);
 
     /*Peek the header */
     msg_len = argo_copy_out(r->ring, r->len, &from, &protocol, &sh,
                             sizeof(sh), 0);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if (msg_len == -1)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         recover_ring(r);
         return ret;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( (protocol != ARGO_PROTO_STREAM) || (msg_len < sizeof (sh)) )
     {
-      DEBUG_APPLE;
+      ARGO_TRACE;
       /* Wrong protocol so bin it */
       (void) argo_copy_out (r->ring, r->len, NULL, NULL, NULL, 0, 1);
       return ret;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     list_for_each_entry(p, &r->privates, node)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( (p->conid == sh.conid) &&
              (p->peer.domain_id == from.domain_id) &&
              (p->peer.aport == from.aport) )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             ret = acceptor_interrupt(p, r, &sh, msg_len);
-            DEBUG_APPLE;
+            ARGO_TRACE;
             return ret;
         }
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     /*consume it */
 
@@ -1840,7 +1836,7 @@ listener_interrupt(struct ring *r)
             list_for_each_entry_safe(pending, t, &r->sponsor->pending_recv_list,
                                      node)
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 if ( pending->sh.flags & ARGO_SHF_SYN &&
                      pending->sh.conid == sh.conid )
                 {
@@ -1854,16 +1850,16 @@ listener_interrupt(struct ring *r)
         }
 
         /* Rst to a listener, should be picked up above for the connexion, drop it */
-        DEBUG_APPLE;
+        ARGO_TRACE;
         (void) argo_copy_out(r->ring, r->len, NULL, NULL, NULL, sizeof(sh),
                              1);
         return ret;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( sh.flags & ARGO_SHF_SYN )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         /* Syn to new connexion */
         if ( (!r->sponsor) || (msg_len != sizeof(sh)) )
         {
@@ -1872,13 +1868,13 @@ listener_interrupt(struct ring *r)
             return ret;
         }
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         ret = copy_into_pending_recv(r, msg_len, r->sponsor);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         wake_up_interruptible_all(&r->sponsor->readq);
         return ret;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     (void) argo_copy_out(r->ring, r->len, NULL, NULL, NULL, sizeof(sh), 1);
     /*Data for unknown destination, RST them */
@@ -1892,8 +1888,7 @@ argo_interrupt_rx(void)
 {
     struct ring *r;
 
-    //DEBUG_ORANGE("a");
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_read_lock(&list_lock);
 
@@ -1947,17 +1942,15 @@ argo_interrupt(int irq, void *dev_id)
 {
     unsigned long flags;
 
-#ifdef ARGO_DEBUG
-    DEBUG_ORANGE ("argo_interrupt");
-#endif
+    ARGO_TRACE;
 
     argo_spin_lock_irqsave(&interrupt_lock, flags);
     argo_interrupt_rx();
 
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     argo_notify();
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_spin_unlock_irqrestore(&interrupt_lock, flags);
     return IRQ_HANDLED;
@@ -2083,32 +2076,32 @@ argo_try_send_sponsor(struct argo_private *p, xen_argo_addr_t *dest,
     addr.domain_id = p->r->id.domain_id;
     addr.pad = 0;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     ret = H_argo_sendv(&addr, dest, &iov, 1, protocol);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
     if ( ret == -EAGAIN )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         /* Add pending xmit */
         xmit_queue_wakeup_sponsor(&p->r->id, dest, len, 0);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         p->send_blocked++;
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
     else
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         /* remove pending xmit */
         xmit_queue_wakeup_sponsor(&p->r->id, dest, len, 1);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         p->send_blocked = 0;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_spin_unlock_irqrestore(&pending_xmit_lock, flags);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     return ret;
 }
 
@@ -2127,9 +2120,9 @@ argo_try_sendv_sponsor(struct argo_private *p,
     addr.domain_id = p->r->id.domain_id;
     addr.pad = 0;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     ret = H_argo_sendv(&addr, dest, iovs, niov, protocol);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
 #ifdef ARGO_DEBUG
     printk (KERN_ERR "sendv returned %d\n", ret);
@@ -2138,25 +2131,25 @@ argo_try_sendv_sponsor(struct argo_private *p,
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
     if ( ret == -EAGAIN )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         /* Add pending xmit */
         xmit_queue_wakeup_sponsor(&p->r->id, dest, len, 0);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         p->send_blocked++;
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
     else
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         /* Remove pending xmit */
         xmit_queue_wakeup_sponsor(&p->r->id, dest, len, 1);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         p->send_blocked = 0;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_spin_unlock_irqrestore (&pending_xmit_lock, flags);
-    DEBUG_APPLE;
+    ARGO_TRACE;
     return ret;
 }
 
@@ -2224,12 +2217,12 @@ argo_sendto_from_sponsor(struct argo_private *p,
 
         if ( len > (p->r->len - sizeof(struct xen_argo_ring_message_header)) )
             ret = -EMSGSIZE;
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( ret )
             break;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( nonblock )
         {
             xen_argo_iov_t iov;
@@ -2247,10 +2240,10 @@ argo_sendto_from_sponsor(struct argo_private *p,
 
             ret = H_argo_sendv(&addr, dest, &iov, 1, protocol);
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
 //FIXME I happen to know that wait_event_interruptible will never
 // evaluate the 2nd argument once it has returned true but I shouldn't
@@ -2259,16 +2252,16 @@ argo_sendto_from_sponsor(struct argo_private *p,
         ret = wait_event_interruptible(p->writeq,
                   ((ts_ret = argo_try_send_sponsor(p, dest, buf, len,
                                                    protocol)) != -EAGAIN));
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( ret )
             break;
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         ret = ts_ret;
     }
     while (0);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     return ret;
 }
@@ -2301,12 +2294,12 @@ argo_stream_sendvto_from_sponsor(struct argo_private *p,
         if ( len > (p->r->len - sizeof(struct xen_argo_ring_message_header)) )
             ret = -EMSGSIZE;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( ret )
             break;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( nonblock )
         {
             xen_argo_addr_t addr;
@@ -2316,10 +2309,10 @@ argo_stream_sendvto_from_sponsor(struct argo_private *p,
             addr.pad = 0;
 
             ret = H_argo_sendv(&addr, dest, iovs, niov, protocol);
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
 //FIXME I happen to know that wait_event_interruptible will never
 // evaluate the 2nd argument once it has returned true but I shouldn't
@@ -2329,17 +2322,17 @@ argo_stream_sendvto_from_sponsor(struct argo_private *p,
                   ((ts_ret = argo_try_sendv_sponsor(p, dest, iovs, niov, len,
                                                     protocol)) != -EAGAIN) ||
                   !stream_connected(p));
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( ret )
             break;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         ret = ts_ret;
     }
     while (0);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     return ret;
 }
@@ -2491,7 +2484,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
     if (!src)
         src = &lsrc;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 #ifdef ARGO_DEBUG
     printk("FISHSOUP argo_recvfrom_dgram %p %u %d %d \n", buf, len,
            nonblock, peek);
@@ -2499,10 +2492,10 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
 
     argo_read_lock(&list_lock);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     for (;;)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( !nonblock )
         {
@@ -2518,7 +2511,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
                 break;
         }
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         /*
          * For Dgrams, we know the interrupt handler will never use the ring,
          * so leave irqs on
@@ -2529,26 +2522,26 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         {
             argo_spin_unlock(&p->r->lock);
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             if ( nonblock )
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 ret = -EAGAIN;
                 break;
             }
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             continue;
         }
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         ret = argo_copy_out(p->r->ring, p->r->len, src, &protocol, buf, len,
                             !peek);
         if ( ret < 0 )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             recover_ring(p->r);
 
             argo_spin_unlock(&p->r->lock);
@@ -2560,7 +2553,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         if ( !peek )
             argo_null_notify();
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( protocol != ARGO_PROTO_DGRAM )
         {
             /* If peeking consume the rubbish */
@@ -2571,7 +2564,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
             continue;
         }
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( ret >= 0 )
         {
@@ -2591,12 +2584,12 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
             }
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_read_unlock(&list_lock);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     return ret;
 }
@@ -2642,30 +2635,30 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
     for (;;)
     {
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         argo_spin_lock_irqsave(&p->pending_recv_lock, flags);
-        DEBUG_APPLE;
+        ARGO_TRACE;
         while ( !list_empty(&p->pending_recv_list) && len )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             pending = list_first_entry(&p->pending_recv_list,
                                        struct pending_recv, node);
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( (pending->data_len - pending->data_ptr) > len )
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 to_copy = len;
                 eat = 0;
             }
             else
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 eat = 1;
                 to_copy = pending->data_len - pending->data_ptr;
             }
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             argo_spin_unlock_irqrestore(&p->pending_recv_lock, flags);
 
             if ( !access_ok_wrapper(VERIFY_WRITE, buf, to_copy) )
@@ -2687,12 +2680,12 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
             if ( !eat )
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 pending->data_ptr += to_copy;
             }
             else
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 list_del (&pending->node);
 
 #ifdef ARGO_DEBUG
@@ -2707,15 +2700,15 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                     schedule_irq = 1;
             }
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             buf += to_copy;
             count += to_copy;
             len -= to_copy;
-            DEBUG_APPLE;
+            ARGO_TRACE;
         }
         argo_spin_unlock_irqrestore(&p->pending_recv_lock, flags);
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         argo_read_unlock(&list_lock);
 
@@ -2726,11 +2719,11 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
         if ( p->state == ARGO_STATE_DISCONNECTED )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             return count ? count : -EPIPE;
         }
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         /* Bizzare sockets TCP behavior */
         if ( count && !(recv_flags & MSG_WAITALL) )
@@ -2740,21 +2733,21 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
         if ( nonblock )
             return count ? count : -EAGAIN;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         ret = wait_event_interruptible(p->readq,
                 (!list_empty (&p->pending_recv_list) || !stream_connected(p)));
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( ret )
             return count ? count : ret;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( !len )
             return count;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         argo_read_lock (&list_lock);
     }
@@ -2770,7 +2763,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
     ssize_t ret;
     int to_send;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     write_lump = DEFAULT_RING_SIZE >> 2;
 
@@ -2778,7 +2771,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
     {
         case ARGO_STATE_DISCONNECTED:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             return -EPIPE;
         }
         case ARGO_STATE_CONNECTING:
@@ -2788,23 +2781,22 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         case ARGO_STATE_CONNECTED:
         case ARGO_STATE_ACCEPTED:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
         default:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             return -EINVAL;
         }
     }
-    DEBUG_APPLE;
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     while ( len )
     {
         struct argo_stream_header sh;
         xen_argo_iov_t iovs[2];
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         to_send = len > write_lump ? write_lump 
                                    : len;
@@ -2823,34 +2815,34 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         iovs[0].pad = 0;
         iovs[1].pad = 0;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         DEBUG_HEXDUMP((void *) buf, to_send);
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( p->state == ARGO_STATE_CONNECTED )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             /* sponsor */
             ret = argo_stream_sendvto_from_sponsor(
                                   p, iovs, 2,
                                   to_send + sizeof(struct argo_stream_header),
                                   nonblock, &p->peer, ARGO_PROTO_STREAM);
-            DEBUG_APPLE;
+            ARGO_TRACE;
         }
         else
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             /* private */
             ret = argo_stream_sendvto_from_private(
                                    p, iovs, 2,
                                    to_send + sizeof(struct argo_stream_header),
                                    nonblock, &p->peer, ARGO_PROTO_STREAM);
-            DEBUG_APPLE;
+            ARGO_TRACE;
         }
 
         if ( ret < 0 )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             return count ? count : ret;
         }
 
@@ -2861,11 +2853,10 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         if ( nonblock )
             return count;
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
 
-    DEBUG_APPLE;
-    DEBUG_APPLE;
+    ARGO_TRACE;
 #ifdef ARGO_DEBUG
     printk(KERN_ERR "avacado count=%d\n", count);
 #endif
@@ -2878,10 +2869,10 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
 {
     int ret = 0;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     if ( ring_id->domain_id != XEN_ARGO_DOMID_ANY )
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
 #ifdef ARGO_DEBUG
         printk(KERN_ERR "ring_id->domain(%x) != XEN_ARGO_DOMID_ANY(%x)",
@@ -2890,7 +2881,7 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
         return -EINVAL;
     }
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 #ifdef ARGO_DEBUG
     printk(KERN_ERR "argo_bind: %d (d: %d) (s: %d)\n", p->ptype,
            ARGO_PTYPE_DGRAM, ARGO_PTYPE_STREAM);
@@ -2900,23 +2891,23 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
     {
         case ARGO_PTYPE_DGRAM:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             ret = new_ring(p, ring_id);
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( !ret )
                 p->r->type = ARGO_RTYPE_DGRAM;
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
         case ARGO_PTYPE_STREAM:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             ret = new_ring(p, ring_id);
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
     return ret;
 }
 
@@ -2985,7 +2976,7 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
     if ( !peer )
         return -EFAULT;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     /* Irritiatingly we need to be restartable */
     switch ( p->state )
@@ -2996,11 +2987,11 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
             p->state = ARGO_STATE_CONNECTING;
             p->conid = argo_random32 ();
             p->peer = *peer;
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             sh.flags = ARGO_SHF_SYN;
             sh.conid = p->conid;
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             ret = xmit_queue_inline(&p->r->id, &p->peer, &sh, sizeof(sh),
                                     ARGO_PROTO_STREAM);
@@ -3008,24 +2999,24 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
             if ( ret == sizeof(sh) )
                 ret = 0;
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( ret && (ret != -EAGAIN) )
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 p->state = ARGO_STATE_BOUND;
                 p->r->type = ARGO_RTYPE_DGRAM;
                 return ret;
             }
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
         case ARGO_STATE_CONNECTED:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( (peer->domain_id != p->peer.domain_id) ||
                  (peer->aport != p->peer.aport) )
             {
-                DEBUG_BANANA;
+                ARGO_TRACE;
                 return -EINVAL;
             }
             else
@@ -3036,25 +3027,25 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
             if ( (peer->domain_id != p->peer.domain_id) ||
                  (peer->aport != p->peer.aport) )
             {
-                DEBUG_BANANA;
+                ARGO_TRACE;
                 return -EINVAL;
             }
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
         default:
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             return -EINVAL;
         }
     }
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( nonblock )
       return -EINPROGRESS;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0) )
     init_timer(&p->to);
@@ -3069,29 +3060,29 @@ argo_connect(struct argo_private *p, xen_argo_addr_t *peer, int nonblock)
 
     while (p->state != ARGO_STATE_CONNECTED)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         ret = wait_event_interruptible(p->writeq,
                                        (p->state != ARGO_STATE_CONNECTING));
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( ret )
         {
             del_timer(&p->to);
             return ret;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if (p->state == ARGO_STATE_DISCONNECTED)
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             p->state = ARGO_STATE_BOUND;
             p->r->type = ARGO_RTYPE_DGRAM;
             ret = -ECONNREFUSED;
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
     del_timer(&p->to);
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     return ret;
 }
@@ -3151,7 +3142,7 @@ allocate_fd_with_private (void *private)
     path.mnt = mntget(argo_mnt);
 #endif
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0) )
     f = alloc_file(&path, FMODE_READ | FMODE_WRITE, &argo_fops_stream);
 #else
@@ -3181,84 +3172,84 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     struct pending_recv *r;
     unsigned long flags;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( p->ptype != ARGO_PTYPE_STREAM )
         return -ENOTTY;
 
     if ( p->state != ARGO_STATE_LISTENING )
     {
-        DEBUG_BANANA;
+        ARGO_TRACE;
         return -EINVAL;
     }
 
 //FIXME leak!
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     for (;;)
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         ret = wait_event_interruptible(p->readq,
                                   (!list_empty (&p->pending_recv_list)) || nonblock);
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( ret )
             return ret;
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         /*Write lock impliciity has pending_recv_lock */
         argo_write_lock_irqsave(&list_lock, flags); 
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( !list_empty(&p->pending_recv_list) )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             r = list_first_entry(&p->pending_recv_list, struct pending_recv,
                                  node);
-            DEBUG_APPLE;
+            ARGO_TRACE;
             list_del(&r->node);
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             atomic_dec(&p->pending_recv_count);
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( (!r->data_len) && (r->sh.flags & ARGO_SHF_SYN) )
                 break;
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             argo_kfree(r);
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         argo_write_unlock_irqrestore(&list_lock, flags);
 
         if ( nonblock )
             return -EAGAIN;
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     argo_write_unlock_irqrestore(&list_lock, flags);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     do
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         a = argo_kmalloc(sizeof(struct argo_private), GFP_KERNEL);
 
         if ( !a )
         {
-            DEBUG_BANANA;
+            ARGO_TRACE;
             ret = -ENOMEM;
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         memset (a, 0, sizeof(struct argo_private));
 
@@ -3270,7 +3261,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
         {
             a->r = NULL;
             ret = -EINVAL;
-            DEBUG_BANANA;
+            ARGO_TRACE;
             break;
         }
 
@@ -3279,13 +3270,13 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
         argo_spin_lock_init(&a->pending_recv_lock);
         INIT_LIST_HEAD(&a->pending_recv_list);
         atomic_set(&a->pending_recv_count, 0);
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         a->send_blocked = 0;
 
         a->peer = r->from;
         a->conid = r->sh.conid;
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( peer )
             *peer = r->from;
@@ -3293,11 +3284,11 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
         fd = allocate_fd_with_private(a);
         if ( fd < 0 )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
             ret = fd;
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         argo_write_lock_irqsave(&list_lock, flags);
         list_add(&a->node, &a->r->privates);
@@ -3307,7 +3298,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
         {
             struct argo_stream_header sh;
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             sh.conid = a->conid;
             sh.flags = ARGO_SHF_ACK;
@@ -3337,7 +3328,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
     argo_kfree (r);
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     if ( a )
     {
@@ -3354,9 +3345,9 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             free_ring(a->r);
 
         argo_kfree(a);
-        DEBUG_APPLE;
+        ARGO_TRACE;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 
     return ret;
 }
@@ -3425,18 +3416,18 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
                     rc = argo_send_stream(p, buf, len, nonblock);
                     break;
                 case ARGO_STATE_DISCONNECTED:
-                    DEBUG_BANANA;
+                    ARGO_TRACE;
                     rc = -EPIPE;
                     break;
                 default:
-                    DEBUG_BANANA;
+                    ARGO_TRACE;
                     return -EINVAL;
             }
             break;
         }
         default:
         {
-            DEBUG_BANANA;
+            ARGO_TRACE;
             return -ENOTTY;
         }
     }
@@ -3478,7 +3469,7 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
         {
             if (peek)
                 return -EINVAL;
-            DEBUG_APPLE;
+            ARGO_TRACE;
             switch ( p->state )
             {
                 case ARGO_STATE_BOUND:
@@ -3493,13 +3484,13 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
                 }
                 case ARGO_STATE_DISCONNECTED:
                 {
-                    DEBUG_BANANA;
+                    ARGO_TRACE;
                     rc = 0;
                     break;
                 }
                 default:
                 {
-                    DEBUG_BANANA;
+                    ARGO_TRACE;
                     rc = -EINVAL;
                 }
             }
@@ -3638,7 +3629,7 @@ argo_release(struct inode *inode, struct file *f)
             case ARGO_STATE_CONNECTING:
             case ARGO_STATE_ACCEPTED:
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 xmit_queue_rst_to (&p->r->id, p->conid, &p->peer);
                 break;
             }
@@ -3650,31 +3641,30 @@ argo_release(struct inode *inode, struct file *f)
     argo_write_lock_irqsave (&list_lock, flags);
     do
     {
-        DEBUG_APPLE;
+        ARGO_TRACE;
         if ( !p->r )
         {
             argo_write_unlock_irqrestore(&list_lock, flags);
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
-        DEBUG_APPLE;
+        ARGO_TRACE;
 
         if ( p != p->r->sponsor )
         {
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             need_ring_free = put_ring (p->r);
             list_del(&p->node);
             argo_write_unlock_irqrestore(&list_lock, flags);
 
-            DEBUG_APPLE;
+            ARGO_TRACE;
             break;
         }
-        DEBUG_APPLE;
 
         //Send RST
 
-        DEBUG_APPLE;
+        ARGO_TRACE;
         p->r->sponsor = NULL;
         need_ring_free = put_ring(p->r);
         argo_write_unlock_irqrestore(&list_lock, flags);
@@ -3739,11 +3729,11 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     if (_IOC_TYPE (cmd) != ARGO_TYPE)
         return rc;
 
-    DEBUG_APPLE;
+    ARGO_TRACE;
     switch (cmd)
     {
         case ARGOIOCSETRINGSIZE:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             {
                 uint32_t ring_size;
                 if (get_user (ring_size, (uint32_t __user *)arg))
@@ -3752,13 +3742,13 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             }
             break;
         case ARGOIOCBIND:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             {
                 struct argo_ring_id ring_id;
                 if ( copy_from_user(&ring_id, (void __user *)arg,
                                     sizeof(struct argo_ring_id)) )
                     return -EFAULT;
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 rc = argo_bind (p, &ring_id);
             }
             break;
@@ -3775,7 +3765,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             rc = 0;
             break;
         case ARGOIOCGETSOCKTYPE:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(int)) )
                 return -EFAULT;
             {
@@ -3787,7 +3777,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             rc = 0;
             break;
         case ARGOIOCGETPEERNAME:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
                 return -EFAULT;
             {
@@ -3801,7 +3791,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             }
             break;
         case ARGOIOCCONNECT:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             {
                 xen_argo_addr_t connect_addr;
                 if ( arg )
@@ -3835,7 +3825,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             unsigned long flags;
             if ( !access_ok_wrapper(VERIFY_WRITE, arg, sizeof(int)) )
                 return -EFAULT;
-            DEBUG_APPLE;
+            ARGO_TRACE;
 
             argo_spin_lock_irqsave (&p->pending_recv_lock, flags);
             if ( put_user (p->pending_error, (int __user *)arg) )
@@ -3846,15 +3836,15 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                 rc = 0;
             }
             argo_spin_unlock_irqrestore (&p->pending_recv_lock, flags);
-            DEBUG_APPLE;
+            ARGO_TRACE;
         }
         break;
         case ARGOIOCLISTEN:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             rc = argo_listen(p);
             break;
         case ARGOIOCACCEPT:
-            DEBUG_APPLE;
+            ARGO_TRACE;
             if ( !access_ok_wrapper(VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
                 return -EFAULT;
             {
@@ -3880,18 +3870,18 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                 if ( copy_from_user(&addr, (void __user *)a.addr,
                                     sizeof(xen_argo_addr_t)) )
                     return -EFAULT;
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 rc = argo_sendto(p, a.buf, a.len, a.flags, &addr, nonblock);
             }
             else
             {
-                DEBUG_APPLE;
+                ARGO_TRACE;
                 rc = argo_sendto(p, a.buf, a.len, a.flags, NULL, nonblock);
             }
         }
         break;
         case ARGOIOCRECV:
-        DEBUG_APPLE;
+        ARGO_TRACE;
         {
             struct argo_dev a;
             xen_argo_addr_t addr;
@@ -3911,7 +3901,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         }
         break;
         case ARGOIOCVIPTABLESADD:
-        DEBUG_APPLE;
+        ARGO_TRACE;
         {
             struct viptables_rule_pos rule_pos;
             struct xen_argo_viptables_rule rule;
@@ -3926,7 +3916,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         }
         break;
         case ARGOIOCVIPTABLESDEL:
-        DEBUG_APPLE;
+        ARGO_TRACE;
         {
             struct viptables_rule_pos rule_pos;
             struct xen_argo_viptables_rule rule;
@@ -3948,7 +3938,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         }
         break;
         case ARGOIOCVIPTABLESLIST:
-        DEBUG_APPLE;
+        ARGO_TRACE;
         {
             struct xen_argo_viptables_list rules_list;
 
@@ -3972,9 +3962,9 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         default:
             printk(KERN_ERR "unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd,
                    ARGOIOCACCEPT);
-            DEBUG_BANANA;
+            ARGO_TRACE;
     }
-    DEBUG_APPLE;
+    ARGO_TRACE;
 #ifdef ARGO_DEBUG
     printk (KERN_ERR "argo_ioctl cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
 #endif
@@ -4011,7 +4001,7 @@ argo_compat_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                                     sizeof(xen_argo_addr_t)) )
                     return -EFAULT;
                 paddr = &addr;
-                DEBUG_APPLE;
+                ARGO_TRACE;
             }
 
             rc = argo_sendto (p, a.buf, a.len, a.flags, paddr, nonblock);
@@ -4019,7 +4009,7 @@ argo_compat_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         break;
 
         case ARGOIOCRECV32:
-        DEBUG_APPLE;
+        ARGO_TRACE;
         {
             struct argo_dev_32 a32;
             struct argo_dev a;
