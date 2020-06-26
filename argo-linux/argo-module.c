@@ -99,6 +99,12 @@
 # define access_ok_wrapper(type, addr, size) access_ok((type), (addr), (size))
 #endif
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3,9,0))
+# define argo_random32 prandom_u32
+#else /* LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0) */
+# define argo_random32 random32
+#endif
+
 #define XEN_ARGO_ROUNDUP(x) roundup((x), XEN_ARGO_MSG_SLOT_SIZE)
 
 #define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
@@ -361,129 +367,10 @@ struct pending_xmit
 /************************debugging **********************************/
 
 
-#define MAGIC 0x12345678
-
-#if 0
-#define argo_kfree(a) do_argo_kfree(a,__LINE__)
-#define argo_kmalloc(a,b) do_argo_kmalloc(a,b,__LINE__)
-static int total = 0, big_total = 1024 * 1024;
-
-#define N_LINES 16384
-static int lines[N_LINES];
-
-#define N_MALLOC 65536
-
-static int malloc_line[N_MALLOC];
-static void *malloc_ptr[N_MALLOC];
-
-static void
-malloc_profile (void)
-{
-  int i;
-  memset (lines, 0, sizeof(lines));
-  for (i = 0; i < N_MALLOC; ++i)
-    {
-      if (malloc_ptr[i])
-        lines[malloc_line[i]]++;
-    }
-
-  for (i = 0; i < N_LINES; ++i)
-    {
-      if (lines[i])
-        printk ("malloc_debug: line %5d: %d mallocs\n", i, lines[i]);
-    }
-}
-
-static void
-do_argo_kfree (void *_a, int line)
-{
-  uint8_t *a = _a;
-  uint32_t size;
-  int i;
 
 
-  for (i = 0; i < N_MALLOC; ++i)
-    {
-      if (malloc_ptr[i] == _a)
-        {
-          malloc_ptr[i] = NULL;
-          malloc_line[i] = 0;
-          break;
-        }
-    }
-
-  if (i == N_MALLOC)
-    {
-      printk (KERN_ERR "MEMORY NOT FROM KMALLOC argo.c line %d\n", line);
-    }
-
-  if ((!a) || (a < (uint8_t *) 0x10000))
-    {
-      printk (KERN_ERR "MEMORY BUG argo.c line %d\n", line);
-    }
-
-  size = *(uint32_t *) (a - 4);
-
-  if (MAGIC != *(uint32_t *) (a + size))
-    {
-      printk (KERN_ERR "MEMORY OVERWRITE argo.c line %d\n", line);
-    }
-  total -= size;
 
 
-  kfree (a - 4);
-}
-
-
-static void *
-do_argo_kmalloc (uint32_t size, int flags, int line)
-{
-  uint8_t *ret;
-  int i;
-
-  ret = kmalloc (size + 8, flags);
-  if (!ret)
-    return ret;
-
-  total += size;
-
-  if (total > big_total)
-    {
-      printk (KERN_ERR "argo memory usage now %d\n", total);
-      big_total += 1024 * 1024;
-      malloc_profile ();
-    }
-
-  ret += 4;
-
-  *(uint32_t *) (ret - 4) = size;
-  *(uint32_t *) (ret + size) = MAGIC;
-
-
-  for (i = 0; i < N_MALLOC; ++i)
-    {
-      if (!malloc_ptr[i])
-        {
-          malloc_ptr[i] = ret;
-          malloc_line[i] = line;
-          break;
-        }
-    }
-
-  return ret;
-}
-#else /* ! 0 */
-
-#define argo_kfree kfree
-#define argo_kmalloc kmalloc
-
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3,9,0))
-# define argo_random32 prandom_u32
-#else /* LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0) */
-# define argo_random32 random32
-#endif
-
-#endif /* 0 */
 
 
 
@@ -663,7 +550,7 @@ allocate_gfn_array(struct ring *r)
     uint32_t n = (r->len + PAGE_SIZE - 1) >> PAGE_SHIFT;
     size_t len = n * sizeof(xen_argo_gfn_t);
 
-    r->gfn_array = argo_kmalloc(len, GFP_KERNEL);
+    r->gfn_array = kmalloc(len, GFP_KERNEL);
     if ( !r->gfn_array )
         return -ENOMEM;
 
@@ -728,7 +615,7 @@ allocate_ring(struct ring *r, int ring_len)
     r->ring = NULL;
 
     if (r->gfn_array)
-        argo_kfree (r->gfn_array);
+        kfree (r->gfn_array);
     r->gfn_array = NULL;
 
   return ret;
@@ -774,7 +661,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
         return -EINVAL;
 
 
-    r = argo_kmalloc(sizeof(struct ring), GFP_KERNEL);
+    r = kmalloc(sizeof(struct ring), GFP_KERNEL);
     if ( !r )
         return -ENOMEM;
     memset (r, 0, sizeof(struct ring));
@@ -787,7 +674,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
 
     if ( ret )
     {
-        argo_kfree(r);
+        kfree(r);
         return ret;
     }
 
@@ -797,7 +684,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
 
     do
     {
-        /* ret = -EINVAL; argo_kfree(r); return ret; DISABLE */
+        /* ret = -EINVAL; kfree(r); return ret; DISABLE */
 
         write_lock_irqsave (&list_lock, flags);
         if ( sponsor->state != ARGO_STATE_IDLE )
@@ -847,8 +734,8 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     write_unlock_irqrestore(&list_lock, flags);
 
     vfree(r->ring);
-    argo_kfree(r->gfn_array);
-    argo_kfree(r);
+    kfree(r->gfn_array);
+    kfree(r);
 
     sponsor->r = NULL;
     sponsor->state = ARGO_STATE_IDLE;
@@ -860,8 +747,8 @@ static void
 free_ring (struct ring *r)
 {
     vfree(r->ring);
-    argo_kfree(r->gfn_array);
-    argo_kfree(r);
+    kfree(r->gfn_array);
+    kfree(r);
 }
 
 /* Cleans up old rings */
@@ -971,7 +858,7 @@ xmit_queue_wakeup_private(struct argo_ring_id *from,
     if ( delete )
         return;
 
-    p = argo_kmalloc( sizeof(struct pending_xmit), GFP_ATOMIC );
+    p = kmalloc( sizeof(struct pending_xmit), GFP_ATOMIC );
     if ( !p )
     {
         pr_err("Out of memory trying to queue an xmit private wakeup\n");
@@ -1020,7 +907,7 @@ xmit_queue_wakeup_sponsor(struct argo_ring_id *from, xen_argo_addr_t * to, int l
         return;
 
 
-    p = argo_kmalloc(sizeof(struct pending_xmit), GFP_ATOMIC);
+    p = kmalloc(sizeof(struct pending_xmit), GFP_ATOMIC);
     if ( !p )
     {
         pr_err("Out of memory trying to queue an xmit sponsor wakeup\n");
@@ -1065,7 +952,7 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
         return ret;
     }
 
-    p = argo_kmalloc(sizeof(struct pending_xmit) + len, GFP_ATOMIC);
+    p = kmalloc(sizeof(struct pending_xmit) + len, GFP_ATOMIC);
     if ( !p )
     {
         spin_unlock_irqrestore (&pending_xmit_lock, flags);
@@ -1121,7 +1008,7 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
         return -1;
     }
 
-    pending = argo_kmalloc(sizeof(struct pending_recv) -
+    pending = kmalloc(sizeof(struct pending_recv) -
                              sizeof(struct argo_stream_header) + len,
                            GFP_ATOMIC);
     if ( !pending )
@@ -1216,7 +1103,7 @@ argo_notify(void)
     spin_lock_irqsave(&pending_xmit_lock, flags);
     nent = atomic_read(&pending_xmit_count);
 
-    d = argo_kmalloc(sizeof(xen_argo_ring_data_t) +
+    d = kmalloc(sizeof(xen_argo_ring_data_t) +
                      nent * sizeof(xen_argo_ring_data_ent_t), GFP_ATOMIC);
     if ( !d )
     {
@@ -1240,7 +1127,7 @@ argo_notify(void)
 
     if ( H_argo_notify(d) )
     {
-        argo_kfree(d);
+        kfree(d);
         spin_unlock_irqrestore(&pending_xmit_lock, flags);
         return;
     }
@@ -1322,7 +1209,7 @@ argo_notify(void)
 
     spin_unlock_irqrestore(&pending_xmit_lock, flags);
 
-    argo_kfree (d);
+    kfree (d);
 }
 
 /***********************  viptables ********************/
@@ -1588,7 +1475,7 @@ listener_interrupt(struct ring *r)
                 {
                     list_del(&pending->node);
                     atomic_dec(&r->sponsor->pending_recv_count);
-                    argo_kfree(pending);
+                    kfree(pending);
                     break;
                 }
             }
@@ -2369,7 +2256,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
 
-                argo_kfree (pending);
+                kfree (pending);
                 atomic_dec(&p->pending_recv_count);
 
                 if (p->full)
@@ -2826,7 +2713,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             if ( (!r->data_len) && (r->sh.flags & ARGO_SHF_SYN) )
                 break;
 
-            argo_kfree(r);
+            kfree(r);
         }
 
         write_unlock_irqrestore(&list_lock, flags);
@@ -2841,7 +2728,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     do
     {
 
-        a = argo_kmalloc(sizeof(struct argo_private), GFP_KERNEL);
+        a = kmalloc(sizeof(struct argo_private), GFP_KERNEL);
 
         if ( !a )
         {
@@ -2902,7 +2789,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
         pr_debug("argo_accept priv %p => %p\n", p, a);
 
-        argo_kfree(r);
+        kfree(r);
 
         /*
          * A new fd with a struct file having its struct file_operations in this
@@ -2917,7 +2804,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     }
     while ( 0 );
 
-    argo_kfree (r);
+    kfree (r);
 
 
     if ( a )
@@ -2934,7 +2821,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
         if ( need_ring_free )
             free_ring(a->r);
 
-        argo_kfree(a);
+        kfree(a);
     }
 
     return ret;
@@ -3088,7 +2975,7 @@ argo_open_dgram(struct inode *inode, struct file *f)
 {
     struct argo_private *p;
 
-    p = argo_kmalloc(sizeof(struct argo_private), GFP_KERNEL);
+    p = kmalloc(sizeof(struct argo_private), GFP_KERNEL);
     if ( !p )
         return -ENOMEM;
 
@@ -3120,7 +3007,7 @@ argo_open_stream(struct inode *inode, struct file *f)
 {
     struct argo_private *p;
 
-    p = argo_kmalloc(sizeof(struct argo_private), GFP_KERNEL);
+    p = kmalloc(sizeof(struct argo_private), GFP_KERNEL);
     if ( !p )
         return -ENOMEM;
 
@@ -3192,7 +3079,7 @@ argo_release(struct inode *inode, struct file *f)
 
                         xmit_queue_rst_to(&p->r->id, pending->sh.conid,
                                           &pending->from);
-                        argo_kfree(pending);
+                        kfree(pending);
                     }
                 }
                 spin_unlock(&p->r->sponsor->pending_recv_lock);
@@ -3245,7 +3132,7 @@ argo_release(struct inode *inode, struct file *f)
                                            node);
 
                 list_del(&pending->node);
-                argo_kfree(pending);
+                kfree(pending);
                 atomic_dec(&p->pending_recv_count);
             }
         }
@@ -3255,7 +3142,7 @@ argo_release(struct inode *inode, struct file *f)
     if ( need_ring_free )
         free_ring(p->r);
 
-    argo_kfree (p);
+    kfree (p);
 
     return 0;
 }
