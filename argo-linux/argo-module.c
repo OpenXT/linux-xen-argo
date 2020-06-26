@@ -103,25 +103,18 @@
 
 #define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
 
-/*#define ARGO_DEBUG 1*/
-#undef ARGO_DEBUG
-#undef ARGO_DEBUG_LOCKS
 
 #ifdef ARGO_DEBUG
 
 
 #define lock2(a,b) do { printk(KERN_ERR  "%s(%s) %s %s:%d cpu%d\n",#a,#b, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b); } while (1==0)
 #define lock3(a,b,c) do { printk(KERN_ERR  "%s(%s,%s) %s %s:%d cpu%d\n",#a,#b,#c, __PRETTY_FUNCTION__,"argo.c",__LINE__,raw_smp_processor_id()); a(b,c); } while (1==0)
-#define DEBUG_RING(a) summary_ring(a)
-#define DEBUG_HEXDUMP(a,b) argo_hexdump(a,b)
 
 #else /* ! ARGO_DEBUG */
 
 
 #define lock2(a,b) a(b)
 #define lock3(a,b,c) a(b,c)
-#define DEBUG_RING(a) (void)0
-#define DEBUG_HEXDUMP(a,b) (void)0
 
 #endif /* ARGO_DEBUG */
 
@@ -461,7 +454,6 @@ struct pending_xmit
 
 #define MAGIC 0x12345678
 
-//#ifdef ARGO_DEBUG
 #if 0
 #define argo_kfree(a) do_argo_kfree(a,__LINE__)
 #define argo_kmalloc(a,b) do_argo_kmalloc(a,b,__LINE__)
@@ -585,85 +577,6 @@ do_argo_kmalloc (uint32_t size, int flags, int line)
 #endif /* 0 */
 
 
-static void
-argo_hexdump (volatile void *_b, int len)
-{
-    volatile uint8_t *b = _b;
-    int s = 0;
-    int e = len;
-    int i, j;
-    uint8_t zero[16] = { 0 };
-
-    int zeros = 0;
-
-    for (i = 0; i < (e + 15); i += 16)
-    {
-        if ((i + sizeof(zero)) <= e)
-        {
-            if (!memcmp ((void *) &b[i], zero, sizeof(zero)))
-                zeros++;
-            else
-                zeros = 0;
-        }
-        else
-            zeros = 0;
-
-        if (zeros == 2)
-            printk (KERN_ERR "*\n");
-
-        if (zeros >= 2)
-            continue;
-
-
-        printk (KERN_ERR "  %08x:", i);
-        for (j = 0; j < 16; ++j)
-        {
-            int k = i + j;
-            if (j == 8)
-                printk (" ");
-            if ((k >= s) && (k < e))
-                printk ("%02x", b[k]);
-            else
-                printk ("  ");
-
-        }
-        printk ("  ");
-
-        for (j = 0; j < 16; ++j)
-        {
-            int k = i + j;
-            if (j == 8)
-                printk (" ");
-            if ((k >= s) && (k < e))
-                printk ("%c", ((b[k] > 32) && (b[k] < 127)) ? b[k] : '.');
-            else
-                printk (" ");
-
-        }
-        printk ("\n");
-    }
-}
-
-static void
-summary_ring (struct ring *r)
-{
-    pr_debug("ring at %p:\n", r);
-
-    pr_debug(" xen_pfn_array_t at %p for %d:\n",
-           r->gfn_array, r->npfns);
-
-    pr_debug(" xen_argo_ring_t at %p:\n", r->ring);
-    pr_debug("  r->rx_ptr=%d r->tx_ptr=%d r->len=%d\n",
-           r->ring->rx_ptr, r->ring->tx_ptr, r->len);
-}
-
-static void
-dump_ring (struct ring *r)
-{
-  summary_ring (r);
-
-  argo_hexdump (r->ring->ring, r->len);
-}
 
 /****************** hypercall ops *************************************/
 
@@ -918,8 +831,20 @@ recover_ring(struct ring *r)
 {
 
     /*It's all gone horribly wrong*/
-    WARN(1, "argo: something went horribly wrong in a ring - dumping and attempting a recovery\n");
-    dump_ring (r);
+    pr_warn("Something went horribly wrong in a ring - dumping and attempting a recovery\n");
+    /* Ring summary w/ dump start*/
+    pr_debug("ring at %p:\n", r);
+
+    pr_debug(" xen_pfn_array_t at %p for %d:\n",
+           r->gfn_array, r->npfns);
+
+    pr_debug(" xen_argo_ring_t at %p:\n", r->ring);
+    pr_debug("  r->rx_ptr=%d r->tx_ptr=%d r->len=%d\n",
+           r->ring->rx_ptr, r->ring->tx_ptr, r->len);
+
+    print_hex_dump_bytes("ring: ", DUMP_PREFIX_OFFSET, r->ring->ring, r->len);
+    /* Ring summary w/ dump end*/
+
 
     /* Xen updates tx_ptr atomically to always be pointing somewhere sensible */
     r->ring->rx_ptr = r->ring->tx_ptr;
@@ -1299,11 +1224,21 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
     k = argo_copy_out(r->ring, r->len, &pending->from, NULL, &pending->sh,
                       len, 1);
 
-    DEBUG_RING(r);
+    /* Ring summary start*/
+    pr_debug("ring at %p:\n", r);
+
+    pr_debug(" xen_pfn_array_t at %p for %d:\n",
+           r->gfn_array, r->npfns);
+
+    pr_debug(" xen_argo_ring_t at %p:\n", r->ring);
+    pr_debug("  r->rx_ptr=%d r->tx_ptr=%d r->len=%d\n",
+           r->ring->rx_ptr, r->ring->tx_ptr, r->len);
+    /* Ring summary end*/
+
 
     pr_debug("Inserting into pending: IP p=%p k=%d s=%d c=%d\n",
            pending, k, p->state, atomic_read (&p->pending_recv_count));
-    /*argo_hexdump (&pending->sh, len);*/
+    print_hex_dump_bytes("Pending recv: ", DUMP_PREFIX_OFFSET, &pending->sh, len);
 
     argo_spin_lock(&p->pending_recv_lock);
     list_add_tail(&pending->node, &p->pending_recv_list);
@@ -1681,7 +1616,16 @@ listener_interrupt(struct ring *r)
     struct argo_private *p;
     xen_argo_addr_t from;
 
-    DEBUG_RING(r);
+    /* Ring summary start*/
+    pr_debug("ring at %p:\n", r);
+
+    pr_debug(" xen_pfn_array_t at %p for %d:\n",
+           r->gfn_array, r->npfns);
+
+    pr_debug(" xen_argo_ring_t at %p:\n", r->ring);
+    pr_debug("  r->rx_ptr=%d r->tx_ptr=%d r->len=%d\n",
+           r->ring->rx_ptr, r->ring->tx_ptr, r->len);
+    /* Ring summary end*/
 
     /*Peek the header */
     msg_len = argo_copy_out(r->ring, r->len, &from, &protocol, &sh,
@@ -2623,7 +2567,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         iovs[0].pad = 0;
         iovs[1].pad = 0;
 
-        DEBUG_HEXDUMP((void *) buf, to_send);
+        print_hex_dump_bytes("stream send dump: ", DUMP_PREFIX_OFFSET, (void *) buf, to_send);
 
         if ( p->state == ARGO_STATE_CONNECTED )
         {
