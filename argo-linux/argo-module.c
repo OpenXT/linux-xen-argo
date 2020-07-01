@@ -870,11 +870,11 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
         return -ENOMEM;
     memset (r, 0, sizeof(struct ring));
 
-    pr_debug("new_ring: Requested size: %d\n", sponsor->desired_ring_size);
+    pr_debug("Requested size: %d\n", sponsor->desired_ring_size);
 
     ret = allocate_ring(r, sponsor->desired_ring_size);
 
-    pr_debug("new_ring: allocate_ring returned: %d\n", ret);
+    pr_debug("Allocate_ring returned: %d\n", ret);
 
     if ( ret )
     {
@@ -897,7 +897,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
             break;
         }
 
-        pr_debug("new_ring: Requested aport: %u\n", id.aport);
+        pr_debug("Requested aport: %u\n", id.aport);
 
         if ( !id.aport )
         {
@@ -3040,7 +3040,7 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
     if ( !access_ok_wrapper(VERIFY_READ, buf, len) )
         return -EFAULT;
 
-    pr_debug("argo_sendto buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
+    pr_debug("Sending: buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
 
     if ( flags & MSG_DONTWAIT )
         nonblock++;
@@ -3118,7 +3118,7 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
     int peek = 0;
     ssize_t rc = 0;
 
-    pr_debug("argo_recvfrom buff:%p len:%d nonblock:%d\n",
+    pr_debug("Receiving: buff:%p len:%d nonblock:%d\n",
            buf, len, nonblock);
  
     if ( !access_ok_wrapper (VERIFY_WRITE, buf, len) )
@@ -3197,7 +3197,7 @@ argo_open_dgram(struct inode *inode, struct file *f)
     INIT_LIST_HEAD(&p->pending_recv_list);
     atomic_set(&p->pending_recv_count, 0);
 
-    pr_debug("argo_open dgram priv %p\n", p);
+    pr_debug("private: %p\n", p);
 
     f->private_data = p;
     f->f_flags = O_RDWR;
@@ -3229,7 +3229,7 @@ argo_open_stream(struct inode *inode, struct file *f)
     INIT_LIST_HEAD(&p->pending_recv_list);
     atomic_set(&p->pending_recv_count, 0);
 
-    pr_debug("argo_open stream priv %p\n", p);
+    pr_debug("private: %p\n", p);
 
     f->private_data = p;
     f->f_flags = O_RDWR;
@@ -3380,100 +3380,142 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     int nonblock = f->f_flags & O_NONBLOCK;
     struct argo_private *p = f->private_data;
 
-    pr_debug("argo_ioctl cmd=%x pid=%d\n", cmd, current->pid);
-
     if (_IOC_TYPE (cmd) != ARGO_TYPE)
         return rc;
 
     switch (cmd)
     {
         case ARGOIOCSETRINGSIZE:
-            {
-                uint32_t ring_size;
-                if (get_user (ring_size, (uint32_t __user *)arg))
-                    return -EFAULT;
-                rc = argo_set_ring_size (p, ring_size);
-            }
-            break;
-        case ARGOIOCBIND:
-            {
-                struct argo_ring_id ring_id;
-                if ( copy_from_user(&ring_id, (void __user *)arg,
-                                    sizeof(struct argo_ring_id)) )
-                    return -EFAULT;
-                rc = argo_bind (p, &ring_id);
-            }
-            break;
-        case ARGOIOCGETSOCKNAME:
-            if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(struct argo_ring_id)) )
-                return -EFAULT;
-            {
-                struct argo_ring_id ring_id;
-                argo_get_sock_name(p, &ring_id);
-                if ( copy_to_user((void __user *)arg, &ring_id,
-                                  sizeof(struct argo_ring_id)) )
-                    return -EFAULT;
-            }
-            rc = 0;
-            break;
-        case ARGOIOCGETSOCKTYPE:
-            if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(int)) )
-                return -EFAULT;
-            {
-                int sock_type;
-                argo_get_sock_type(p, &sock_type);
-                if ( put_user(sock_type, (int __user *)arg) )
-                    return -EFAULT;
-            }
-            rc = 0;
-            break;
-        case ARGOIOCGETPEERNAME:
-            if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
-                return -EFAULT;
-            {
-                xen_argo_addr_t addr;
-                rc = argo_get_peer_name (p, &addr);
-                if ( rc )
-                    return rc;
-                if ( copy_to_user((void __user *)arg, &addr,
-                                  sizeof(xen_argo_addr_t)))
-                    return -EFAULT;
-            }
-            break;
-        case ARGOIOCCONNECT:
-            {
-                xen_argo_addr_t connect_addr;
-                if ( arg )
-                {
-                    if ( copy_from_user(&connect_addr, (void __user *)arg,
-                                        sizeof(xen_argo_addr_t)) )
-                        return -EFAULT;
-                }
+        {
+            uint32_t ring_size;
+            pr_debug("Start: SETRINGSIZE=%x pid=%d\n", cmd, current->pid);
 
-                //For for the lazy do a bind if it wasn't done
-                if ( p->state == ARGO_STATE_IDLE )
-                {
-                    struct argo_ring_id id;
-                    memset(&id, 0, sizeof(id));
-                    id.partner_id = arg ? connect_addr.domain_id :
-                                          XEN_ARGO_DOMID_ANY;
-                    id.domain_id = XEN_ARGO_DOMID_ANY;
-                    id.aport = 0;
-                    rc = argo_bind(p, &id);
-                    if ( rc )
-                        break;
-                }
-                if ( arg )
-                    rc = argo_connect(p, &connect_addr, nonblock);
-                else
-                    rc = argo_connect(p, NULL, nonblock);
+            if (get_user (ring_size, (uint32_t __user *)arg))
+            {
+                rc = -EFAULT;
+                break;
             }
-            break;
+            rc = argo_set_ring_size (p, ring_size);
+        }
+        break;
+        case ARGOIOCBIND:
+        {
+            struct argo_ring_id ring_id;
+            pr_debug("Start: BIND=%x pid=%d\n", cmd, current->pid);
+
+            if ( copy_from_user(&ring_id, (void __user *)arg,
+                                sizeof(struct argo_ring_id)) )
+            {
+                rc = -EFAULT;
+                break;
+            }
+            rc = argo_bind (p, &ring_id);
+        }
+        break;
+        case ARGOIOCGETSOCKNAME:
+        {
+            struct argo_ring_id ring_id;
+            pr_debug("Start: GETSOCKNAME=%x pid=%d\n", cmd, current->pid);
+
+            if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(struct argo_ring_id)) )
+            {
+                rc = -EFAULT;
+                break;
+            }
+
+            argo_get_sock_name(p, &ring_id);
+            if ( copy_to_user((void __user *)arg, &ring_id,
+                              sizeof(struct argo_ring_id)) )
+            {
+                rc = -EFAULT;
+                break;
+            }
+        }
+        rc = 0;
+        break;
+        case ARGOIOCGETSOCKTYPE:
+        {
+            int sock_type;
+            pr_debug("Start: GETSOCKTYPE=%x pid=%d\n", cmd, current->pid);
+
+            if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(int)) )
+            {
+                rc = -EFAULT;
+                break;
+            }
+
+            argo_get_sock_type(p, &sock_type);
+            if ( put_user(sock_type, (int __user *)arg) )
+            {
+                rc = -EFAULT;
+                break;
+            }
+        }
+        rc = 0;
+        break;
+        case ARGOIOCGETPEERNAME:
+        {
+            xen_argo_addr_t addr;
+            pr_debug("Start: GETPEERNAME=%x pid=%d\n", cmd, current->pid);
+
+            if ( !access_ok_wrapper (VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
+            {
+                rc = -EFAULT;
+                break;
+            }
+
+            rc = argo_get_peer_name (p, &addr);
+            if (rc)
+                break;
+            if (copy_to_user((void __user *)arg, &addr,
+                              sizeof(xen_argo_addr_t)))
+                rc = -EFAULT;
+        }
+        break;
+        case ARGOIOCCONNECT:
+        {
+            xen_argo_addr_t connect_addr;
+            pr_debug("Start: CONNECT=%x pid=%d\n", cmd, current->pid);
+
+            if ( arg )
+            {
+                if ( copy_from_user(&connect_addr, (void __user *)arg,
+                                    sizeof(xen_argo_addr_t)) )
+                {
+                    rc = -EFAULT;
+                    break;
+                }
+            }
+
+            //For for the lazy do a bind if it wasn't done
+            if ( p->state == ARGO_STATE_IDLE )
+            {
+                struct argo_ring_id id;
+                memset(&id, 0, sizeof(id));
+                id.partner_id = arg ? connect_addr.domain_id :
+                                      XEN_ARGO_DOMID_ANY;
+                id.domain_id = XEN_ARGO_DOMID_ANY;
+                id.aport = 0;
+                rc = argo_bind(p, &id);
+                if ( rc )
+                    break;
+            }
+            if ( arg )
+                rc = argo_connect(p, &connect_addr, nonblock);
+            else
+                rc = argo_connect(p, NULL, nonblock);
+        }
+        break;
         case ARGOIOCGETCONNECTERR:
         {
             unsigned long flags;
+            pr_debug("Start: GETCONNECTERR=%x pid=%d\n", cmd, current->pid);
+
             if ( !access_ok_wrapper(VERIFY_WRITE, arg, sizeof(int)) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
 
             argo_spin_lock_irqsave (&p->pending_recv_lock, flags);
             if ( put_user (p->pending_error, (int __user *)arg) )
@@ -3487,34 +3529,50 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         }
         break;
         case ARGOIOCLISTEN:
-            rc = argo_listen(p);
-            break;
+        pr_debug("Start: LISTEN=%x pid=%d\n", cmd, current->pid);
+
+        rc = argo_listen(p);
+        break;
         case ARGOIOCACCEPT:
+        {
+            xen_argo_addr_t addr;
+            pr_debug("Start: ACCEPT=%x pid=%d\n", cmd, current->pid);
+
             if ( !access_ok_wrapper(VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
-                return -EFAULT;
             {
-                xen_argo_addr_t addr;
-                rc = argo_accept (p, &addr, nonblock);
-                if ( rc < 0 )
-                    return rc;
-                if ( copy_to_user((void __user *)arg, &addr,
-                                  sizeof(xen_argo_addr_t)) )
-                    return -EFAULT;
+                rc = -EFAULT;
+                break;
             }
-            break;
+
+            rc = argo_accept (p, &addr, nonblock);
+            if ( rc < 0 )
+                break;
+            if ( copy_to_user((void __user *)arg, &addr,
+                             sizeof(xen_argo_addr_t)) )
+                rc = -EFAULT;
+        }
+        break;
         case ARGOIOCSEND:
         {
             struct argo_dev a;
             xen_argo_addr_t addr;
+            pr_debug("Start: SEND=%x pid=%d\n", cmd, current->pid);
+
             if ( copy_from_user(&a, (void __user *)arg,
                                 sizeof(struct argo_dev)) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
 
             if ( a.addr)
             {
                 if ( copy_from_user(&addr, (void __user *)a.addr,
                                     sizeof(xen_argo_addr_t)) )
-                    return -EFAULT;
+                {
+                    rc = -EFAULT;
+                    break;
+                }
                 rc = argo_sendto(p, a.buf, a.len, a.flags, &addr, nonblock);
             }
             else
@@ -3527,17 +3585,28 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         {
             struct argo_dev a;
             xen_argo_addr_t addr;
+            pr_debug("Start: RECV=%x pid=%d\n", cmd, current->pid);
+
             if ( copy_from_user(&a, (void __user *)arg, sizeof(struct argo_dev)) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
             if ( a.addr )
             {
                 if ( copy_from_user (&addr, a.addr, sizeof(xen_argo_addr_t)) )
-                    return -EFAULT;
+                {
+                    rc = -EFAULT;
+                    break;
+                }
                 rc = argo_recvfrom (p, a.buf, a.len, a.flags, &addr, nonblock);
                 if ( rc < 0 )
-                    return rc;
+                    break;
                 if ( copy_to_user (a.addr, &addr, sizeof(xen_argo_addr_t)) )
-                    return -EFAULT;
+                {
+                    rc = -EFAULT;
+                    break;
+                }
             } else
                 rc = argo_recvfrom (p, a.buf, a.len, a.flags, NULL, nonblock);
         }
@@ -3546,12 +3615,16 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         {
             struct viptables_rule_pos rule_pos;
             struct xen_argo_viptables_rule rule;
+            pr_debug("Start: VIPTABLESADD=%x pid=%d\n", cmd, current->pid);
 
             if ( copy_from_user(&rule_pos, (void __user *)arg,
                                 sizeof(struct viptables_rule_pos)) ||
                  copy_from_user(&rule, rule_pos.rule,
                                 sizeof(struct xen_argo_viptables_rule)) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+             }
 
             rc = viptables_add(p, &rule, rule_pos.position);
         }
@@ -3560,16 +3633,23 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         {
             struct viptables_rule_pos rule_pos;
             struct xen_argo_viptables_rule rule;
+            pr_debug("Start: VIPTABLESDEL=%x pid=%d\n", cmd, current->pid);
 
             if ( copy_from_user(&rule_pos, (void __user *)arg,
                                 sizeof(struct viptables_rule_pos)) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
 
             if ( rule_pos.rule )
             {
                 if ( copy_from_user(&rule, rule_pos.rule,
                                     sizeof(struct xen_argo_viptables_rule)) )
-                    return -EFAULT;
+                {
+                    rc = -EFAULT;
+                    break;
+                }
 
                 rc = viptables_del(p, &rule, rule_pos.position);
             }
@@ -3580,30 +3660,39 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         case ARGOIOCVIPTABLESLIST:
         {
             struct xen_argo_viptables_list rules_list;
+            pr_debug("Start: VIPTABLESLIST=%x pid=%d\n", cmd, current->pid);
 
             if ( !access_ok_wrapper(VERIFY_WRITE, (void __user *)arg,
                             sizeof (struct xen_argo_viptables_list)) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
 
             if ( get_user(rules_list.nrules,
                           &((struct xen_argo_viptables_list *)arg)->nrules) )
-                return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
 
             rc = viptables_list(p, &rules_list);
-            if ( rc )
-                return rc;
 
-            if ( copy_to_user((void __user *)arg, &rules_list,
+            if (rc)
+                break;
+            if (copy_to_user((void __user *)arg, &rules_list,
                               sizeof(struct xen_argo_viptables_list)) )
-              return -EFAULT;
+            {
+                rc = -EFAULT;
+                break;
+            }
         }
         break;
         default:
-            pr_err("unknown ioctl: cmd=%x ARGOIOCACCEPT=%lx\n", cmd,
-                   ARGOIOCACCEPT);
+            pr_err("unknown ioctl: cmd=%x\n", cmd);
     }
 
-    pr_debug("argo_ioctl cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
+    pr_debug("Finish: cmd=%x pid=%d result=%d\n", cmd, current->pid, rc);
 
     return rc;
 }
