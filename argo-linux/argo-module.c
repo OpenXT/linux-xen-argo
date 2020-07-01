@@ -2363,7 +2363,16 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
         iovs[0].pad = 0;
         iovs[1].pad = 0;
 
-        print_hex_dump_bytes("stream send dump: ", DUMP_PREFIX_OFFSET, (void *) buf, to_send);
+        /* As argo has no need to access data it is sending copy_from_user is
+         * never called. Thus to debug output SMAP must be disabled.
+         * Uncomment to enable this debugging
+         */
+
+        /*
+         * stac();
+         * print_hex_dump_bytes("stream send dump: ", DUMP_PREFIX_OFFSET, (void *) buf, to_send);
+         * clac();
+         */
 
         if ( p->state == ARGO_STATE_CONNECTED )
         {
