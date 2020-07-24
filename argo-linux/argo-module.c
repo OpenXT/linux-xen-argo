@@ -77,6 +77,7 @@
 #include <xen/evtchn.h>
 #include <xen/argo.h>
 #include <linux/argo_dev.h>
+#include <linux/argo.h>
 #include <linux/fs.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
@@ -107,7 +108,7 @@
 
 #define XEN_ARGO_ROUNDUP(x) roundup((x), XEN_ARGO_MSG_SLOT_SIZE)
 
-#define DEFAULT_RING_SIZE     (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - sizeof(xen_argo_ring_t)-XEN_ARGO_ROUNDUP(1))))
+#define DEFAULT_RING_SIZE (XEN_ARGO_ROUNDUP((((PAGE_SIZE)*32) - ARGO_RING_OVERHEAD)))
 
 
 
@@ -3870,6 +3871,10 @@ static int __init
 argo_init(void)
 {
     int error;
+
+    compiletime_assert(ARGO_RING_OVERHEAD ==
+                       (sizeof(xen_argo_ring_t) + XEN_ARGO_ROUNDUP(1)),
+                       "ARGO_RING_OVERHEAD has incorrect size");
 
 #ifdef XC_DKMS
     if ( !xen_hvm_domain() )

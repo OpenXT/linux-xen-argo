@@ -41,6 +41,14 @@ typedef uint16_t domid_t;
 #endif
 
 /*
+ * When a ring is registered, some headroom within the ring is required for its
+ * operation and is not available for messages. This overhead should be
+ * subtracted from the ring size to determine the maximum message size that can
+ * be accommodated.
+ */
+#define ARGO_RING_OVERHEAD 80
+
+/*
  * Items below here are the subset of those defined in the public Xen Argo
  * header, or the OpenXT viptables additions to it, that are exposed by the
  * Linux kernel driver to Linux userspace.
