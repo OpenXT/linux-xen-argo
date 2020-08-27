@@ -170,18 +170,19 @@ argo_ring_bytes_to_read(volatile struct xen_argo_ring *r, uint32_t ring_size)
 }
 
 /*
- * argo_copy_out :
- * Copy at most t bytes of the next message in the ring, into the buffer
- * at _buf, setting from and protocol if they are not NULL.
+ * _argo_copy_out :
+ * Copy at most t bytes of the next message in the ring, into the buffer,
+ * setting from and protocol if they are not NULL.
  *
- * if _buf is NULL, discard the ring contents.
+ * This will copy to user_buf if non-NULL, otherwise _buf if non-NULL.
+ * When both user_buf and _buf are NULL, the ring contents are discarded.
  *
  * Returns actual length of the message or -1 if there is nothing to read.
  */
 static ssize_t
-argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
+_argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
               struct xen_argo_addr *from, uint32_t * protocol,
-              void *_buf, size_t t, int consume)
+              void *_buf, void __user *user_buf, size_t t, int consume)
 {
     volatile struct xen_argo_ring_message_header *mh;
     /* unnecessary cast from void * required by MSVC compiler */
@@ -233,9 +234,15 @@ argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
         copy_len = (rxp + len) > ring_size ? ring_size - rxp
                                            : len;
 
-        if (buf) {
+        if (user_buf) {
+            if (copy_to_user(user_buf, &r->ring[rxp], copy_len))
+                return -EFAULT;
+            user_buf += copy_len;
+        } else if (buf) {
             memcpy (buf, &r->ring[rxp], copy_len);
             buf += copy_len;
+        } else {
+            /* discarding ring contents. */
         }
 
         len -= copy_len;
@@ -259,6 +266,20 @@ argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
     return ret;
 }
 
+static ssize_t
+argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
+              struct xen_argo_addr *from, uint32_t * protocol,
+              void *buf, size_t t, int consume)
+{
+    return _argo_copy_out(r, ring_size, from, protocol, buf, NULL, t, consume);
+}
+static ssize_t
+argo_copy_out_user(struct xen_argo_ring *r, uint32_t ring_size,
+                   struct xen_argo_addr *from, uint32_t * protocol,
+                   void __user *buf, size_t t, int consume)
+{
+    return _argo_copy_out(r, ring_size, from, protocol, NULL, buf, t, consume);
+}
 /*-----------------                    ---------------------*/
 
 struct argo_private;
@@ -2099,8 +2120,8 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         }
 
 
-        ret = argo_copy_out(p->r->ring, p->r->len, src, &protocol, buf, len,
-                            !peek);
+        ret = argo_copy_out_user(p->r->ring, p->r->len, src, &protocol,
+                                 buf, len, !peek);
         if ( ret < 0 )
         {
             recover_ring(p->r);
