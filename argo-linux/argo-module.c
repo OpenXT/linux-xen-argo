@@ -173,6 +173,9 @@ argo_ring_bytes_to_read(volatile struct xen_argo_ring *r, uint32_t ring_size)
  * argo_copy_out :
  * Copy at most t bytes of the next message in the ring, into the buffer
  * at _buf, setting from and protocol if they are not NULL.
+ *
+ * if _buf is NULL, discard the ring contents.
+ *
  * Returns actual length of the message or -1 if there is nothing to read.
  */
 static ssize_t
@@ -185,9 +188,9 @@ argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
     uint8_t *buf = (uint8_t *) _buf;
     uint32_t btr = argo_ring_bytes_to_read(r, ring_size);
     uint32_t rxp = r->rx_ptr;
-    uint32_t bte;
-    uint32_t len;
+    uint32_t len, discard_len = 0;
     ssize_t ret;
+    size_t copy_len;
 
     if ( btr < sizeof (*mh) )
         return -1;
@@ -221,40 +224,32 @@ argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
     len -= sizeof(*mh);
     ret = len;
 
-    bte = ring_size - rxp;
-
-    if ( bte < len )
-    {
-        if ( t < bte )
-        {
-            if ( buf )
-            {
-                memcpy (buf, (void *) &r->ring[rxp], t);
-                buf += t;
-            }
-
-            rxp = 0;
-            len -= bte;
-            t = 0;
-        }
-        else
-        {
-            if ( buf )
-            {
-                memcpy(buf, (void *) &r->ring[rxp], bte);
-                buf += bte;
-            }
-            rxp = 0;
-            len -= bte;
-            t -= bte;
-        }
+    if (t < len) {
+        discard_len = len - t;
+        len = t;
     }
-    if ( buf && t )
-        memcpy(buf, (void *) &r->ring[rxp], (t < len) ? t : len);
 
-    rxp += XEN_ARGO_ROUNDUP(len);
-    if ( rxp == ring_size )
-        rxp = 0;
+    while (len) {
+        copy_len = (rxp + len) > ring_size ? ring_size - rxp
+                                           : len;
+
+        if (buf) {
+            memcpy (buf, &r->ring[rxp], copy_len);
+            buf += copy_len;
+        }
+
+        len -= copy_len;
+        rxp += copy_len;
+        if (rxp == ring_size)
+            rxp = 0;
+    }
+
+    /* rxp has been advanced with the copied data, but needs updating for
+     * skipped data and alignment before writing. */
+    rxp += discard_len;
+    rxp = XEN_ARGO_ROUNDUP(rxp);
+    if ( rxp >= ring_size )
+        rxp -= ring_size;
 
     mb();
 
