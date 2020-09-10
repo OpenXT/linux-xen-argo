@@ -20,5 +20,6 @@ modules_install:
 headers_install:
 	install -d $(INSTALL_HDR_PATH)/include/linux
 	install -m 0644 include/linux/argo_dev.h $(INSTALL_HDR_PATH)/include/linux
+	install -m 0644 include/linux/argo.h $(INSTALL_HDR_PATH)/include/linux
 
 endif

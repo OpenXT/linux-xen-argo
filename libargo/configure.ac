@@ -72,7 +72,7 @@ AC_C_INLINE
 AC_C_CONST
 
 # Required headers.
-AC_CHECK_HEADERS([xen/argo.h linux/argo_dev.h], [] , AC_MSG_ERROR([ARGO headers are missing.]),
+AC_CHECK_HEADERS([linux/argo.h linux/argo_dev.h], [] , AC_MSG_ERROR([ARGO headers are missing.]),
                  [#include <stdint.h>
                   #include <unistd.h>
                   #define ARGO_EXCLUDE_INTERNAL

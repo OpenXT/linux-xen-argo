@@ -1,1 +1,2 @@
 header-y += argo_dev.h
+header-y += argo.h

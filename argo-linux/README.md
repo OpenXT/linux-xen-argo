@@ -1,6 +1,6 @@
-# V4V
+# Argo
 
-Interdomain communications driver that interfaces the v4v hypervisor extensions
-in OpenXT. The interfacing is done directly through hypercalls and events are
-raised using a dedicated VIRQ. All guest to guest communications is brokered
-through the hypervisor.
+Hypervisor-mediated data exchange interdomain communications driver,
+working with the Argo hypercall of the Xen hypervisor.
+
+https://wiki.xenproject.org/wiki/Argo:_Hypervisor-Mediated_Exchange_(HMX)_for_Xen

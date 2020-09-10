@@ -2,6 +2,6 @@ Makefile usr/src/argo-DEB_VERSION_UPSTREAM
 Kbuild usr/src/argo-DEB_VERSION_UPSTREAM
 argo.c usr/src/argo-DEB_VERSION_UPSTREAM
 include/linux/argo_dev.h usr/src/argo-DEB_VERSION_UPSTREAM/include/linux
-include/xen/argo.h usr/src/argo-DEB_VERSION_UPSTREAM/include/xen
+include/linux/argo.h usr/src/argo-DEB_VERSION_UPSTREAM/include/linux
 include/xen/hypercall6.h usr/src/argo-DEB_VERSION_UPSTREAM/include/xen
 include/argo.h usr/src/argo-DEB_VERSION_UPSTREAM/include

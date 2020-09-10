@@ -20,7 +20,7 @@
 #ifndef __ARGO_DEV_H__
 #define __ARGO_DEV_H__
 
-#include <xen/argo.h>
+#include <linux/argo.h>
 
 typedef enum
 {
