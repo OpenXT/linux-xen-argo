@@ -62,4 +62,4 @@ libargo.pc
 app/argo-proxy
 app/ttcp-argo
 test/test
-libargo/app/viptables
+app/viptables
