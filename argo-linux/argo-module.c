@@ -1737,7 +1737,7 @@ argo_try_sendv_sponsor(struct argo_private *p,
 
     ret = H_argo_sendv(&addr, dest, iovs, niov, protocol);
 
-    pr_debug("sendv Hypercall returned: %d\n", ret);
+    pr_debug("sendv Hypercall returned: %zd\n", ret);
 
     spin_lock_irqsave(&pending_xmit_lock, flags);
     if ( ret == -EAGAIN )
@@ -2074,7 +2074,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
     if (!src)
         src = &lsrc;
 
-    pr_debug("argo_recvfrom_dgram buff:%p len:%u nonblock:%d peek:%d \n",
+    pr_debug("argo_recvfrom_dgram buff:%p len:%zu nonblock:%d peek:%d \n",
            buf, len, nonblock, peek);
 
     read_lock(&list_lock);
@@ -2253,7 +2253,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             {
                 list_del (&pending->node);
 
-                pr_debug("OP pending=%p len=%d state=%d count=%d\n", pending,
+                pr_debug("OP pending=%p len=%zu state=%d count=%d\n", pending,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
 
@@ -2406,7 +2406,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
 
     }
 
-    pr_debug("Stream bytes sent: %d\n", count);
+    pr_debug("Stream bytes sent: %zu\n", count);
 
     return count;
 }
@@ -2846,7 +2846,7 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
     if ( !access_ok_wrapper(VERIFY_READ, buf, len) )
         return -EFAULT;
 
-    pr_debug("Sending: buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
+    pr_debug("Sending: buf:%p len:%zu nonblock:%d\n", buf, len, nonblock);
 
     if ( flags & MSG_DONTWAIT )
         nonblock++;
@@ -2924,7 +2924,7 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
     int peek = 0;
     ssize_t rc = 0;
 
-    pr_debug("Receiving: buff:%p len:%d nonblock:%d\n",
+    pr_debug("Receiving: buff:%p len:%zu nonblock:%d\n",
            buf, len, nonblock);
  
     if ( !access_ok_wrapper (VERIFY_WRITE, buf, len) )
