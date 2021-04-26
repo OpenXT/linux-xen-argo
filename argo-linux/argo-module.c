@@ -58,6 +58,7 @@
 #include <linux/spinlock.h>
 #include <linux/list.h>
 #include <linux/socket.h>
+#include <linux/workqueue.h>
 
 #ifdef XC_KERNEL
 #include <asm/hypercall.h>
@@ -1564,17 +1565,22 @@ argo_interrupt_rx(void)
     read_unlock (&list_lock);
 }
 
+static void argo_work_fn(struct work_struct *work)
+{
+    argo_interrupt_rx();
+    argo_notify();
+}
+
+DECLARE_WORK(argo_work, argo_work_fn);
+
 static irqreturn_t
 argo_interrupt(int irq, void *dev_id)
 {
     unsigned long flags;
 
-
     spin_lock_irqsave(&interrupt_lock, flags);
-    argo_interrupt_rx();
 
-
-    argo_notify();
+    schedule_work(&argo_work);
 
     spin_unlock_irqrestore(&interrupt_lock, flags);
     return IRQ_HANDLED;
