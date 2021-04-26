@@ -53,6 +53,7 @@
 #include <linux/mm.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/vmalloc.h>
 #include <linux/interrupt.h>
 #include <linux/rwsem.h>
@@ -337,7 +338,7 @@ struct pending_recv
 
 
 static spinlock_t interrupt_lock;
-static spinlock_t pending_xmit_lock;
+static struct mutex pending_xmit_lock;
 static struct list_head pending_xmit_list;
 static atomic_t pending_xmit_count;
 
@@ -927,12 +928,11 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
                   void *buf, size_t len, uint32_t protocol)
 {
     ssize_t ret;
-    unsigned long flags;
     xen_argo_iov_t iov;
     struct pending_xmit *p;
     xen_argo_addr_t addr;
 
-    spin_lock_irqsave (&pending_xmit_lock, flags);
+    mutex_lock(&pending_xmit_lock);
 
     iov.iov_hnd = buf;
 #ifdef CONFIG_ARM
@@ -949,14 +949,14 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
     ret = H_argo_sendv(&addr, to, &iov, 1, protocol);
     if (ret != -EAGAIN)
     {
-        spin_unlock_irqrestore(&pending_xmit_lock, flags);
+        mutex_unlock(&pending_xmit_lock);
         return ret;
     }
 
     p = kmalloc(sizeof(struct pending_xmit) + len, GFP_ATOMIC);
     if ( !p )
     {
-        spin_unlock_irqrestore (&pending_xmit_lock, flags);
+        mutex_unlock(&pending_xmit_lock);
         pr_err("Out of memory trying to queue an xmit of %zu bytes\n", len);
         return -ENOMEM;
     }
@@ -972,7 +972,7 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
 
     list_add_tail (&p->node, &pending_xmit_list);
     atomic_inc (&pending_xmit_count);
-    spin_unlock_irqrestore (&pending_xmit_lock, flags);
+    mutex_unlock(&pending_xmit_lock);
 
     return len;
 }
@@ -1094,21 +1094,20 @@ argo_null_notify(void)
 static void
 argo_notify(void)
 {
-    unsigned long flags;
     int ret;
     int nent;
     struct pending_xmit *p, *n;
     xen_argo_ring_data_t *d;
     int i = 0;
 
-    spin_lock_irqsave(&pending_xmit_lock, flags);
+    mutex_lock(&pending_xmit_lock);
     nent = atomic_read(&pending_xmit_count);
 
     d = kmalloc(sizeof(xen_argo_ring_data_t) +
                      nent * sizeof(xen_argo_ring_data_ent_t), GFP_ATOMIC);
     if ( !d )
     {
-        spin_unlock_irqrestore(&pending_xmit_lock, flags);
+        mutex_unlock(&pending_xmit_lock);
         return;
     }
 
@@ -1129,7 +1128,7 @@ argo_notify(void)
     if ( H_argo_notify(d) )
     {
         kfree(d);
-        spin_unlock_irqrestore(&pending_xmit_lock, flags);
+        mutex_unlock(&pending_xmit_lock);
         return;
     }
 
@@ -1208,7 +1207,7 @@ argo_notify(void)
         i++;
     }
 
-    spin_unlock_irqrestore(&pending_xmit_lock, flags);
+    mutex_unlock(&pending_xmit_lock);
 
     kfree (d);
 }
@@ -1692,7 +1691,6 @@ argo_try_send_sponsor(struct argo_private *p, xen_argo_addr_t *dest,
                       const void *buf, size_t len, uint32_t protocol)
 {
     size_t ret;
-    unsigned long flags;
     xen_argo_iov_t iov;
     xen_argo_addr_t addr;
 
@@ -1709,7 +1707,7 @@ argo_try_send_sponsor(struct argo_private *p, xen_argo_addr_t *dest,
 
     ret = H_argo_sendv(&addr, dest, &iov, 1, protocol);
 
-    spin_lock_irqsave(&pending_xmit_lock, flags);
+    mutex_lock(&pending_xmit_lock);
     if ( ret == -EAGAIN )
     {
         /* Add pending xmit */
@@ -1723,7 +1721,7 @@ argo_try_send_sponsor(struct argo_private *p, xen_argo_addr_t *dest,
         p->send_blocked = 0;
     }
 
-    spin_unlock_irqrestore(&pending_xmit_lock, flags);
+    mutex_unlock(&pending_xmit_lock);
     return ret;
 }
 
@@ -1735,7 +1733,6 @@ argo_try_sendv_sponsor(struct argo_private *p,
                       uint32_t protocol)
 {
     size_t ret;
-    unsigned long flags;
     xen_argo_addr_t addr;
 
     addr.aport = p->r->id.aport;
@@ -1746,7 +1743,7 @@ argo_try_sendv_sponsor(struct argo_private *p,
 
     pr_debug("sendv Hypercall returned: %zd\n", ret);
 
-    spin_lock_irqsave(&pending_xmit_lock, flags);
+    mutex_lock(&pending_xmit_lock);
     if ( ret == -EAGAIN )
     {
         /* Add pending xmit */
@@ -1760,7 +1757,7 @@ argo_try_sendv_sponsor(struct argo_private *p,
         p->send_blocked = 0;
     }
 
-    spin_unlock_irqrestore (&pending_xmit_lock, flags);
+    mutex_unlock(&pending_xmit_lock);
     return ret;
 }
 
@@ -1774,7 +1771,6 @@ argo_try_sendv_privates(struct argo_private *p, xen_argo_addr_t * dest,
                         uint32_t protocol)
 {
     size_t ret;
-    unsigned long flags;
     xen_argo_addr_t addr;
 
     addr.aport = p->r->id.aport;
@@ -1783,7 +1779,7 @@ argo_try_sendv_privates(struct argo_private *p, xen_argo_addr_t * dest,
 
     ret = H_argo_sendv(&addr, dest, iovs, niov, protocol);
 
-    spin_lock_irqsave(&pending_xmit_lock, flags);
+    mutex_lock(&pending_xmit_lock);
     if ( ret == -EAGAIN )
     {
         /* Add pending xmit */
@@ -1796,7 +1792,7 @@ argo_try_sendv_privates(struct argo_private *p, xen_argo_addr_t * dest,
         xmit_queue_wakeup_private(&p->r->id, p->conid, dest, len, 1);
         p->send_blocked = 0;
     }
-    spin_unlock_irqrestore(&pending_xmit_lock, flags);
+    mutex_unlock(&pending_xmit_lock);
 
     return ret;
 }
@@ -3808,7 +3804,7 @@ argo_probe(struct platform_device *dev)
     INIT_LIST_HEAD(&ring_list);
     init_rwsem(&list_sem);
     INIT_LIST_HEAD(&pending_xmit_list);
-    spin_lock_init(&pending_xmit_lock);
+    mutex_init(&pending_xmit_lock);
     spin_lock_init(&interrupt_lock);
     atomic_set(&pending_xmit_count, 0);
 
