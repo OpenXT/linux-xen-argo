@@ -282,7 +282,7 @@ struct ring
     atomic_t refcnt;
 
     /*Protects the data in the xen_argo_ring_t also privates and sponsor */
-    spinlock_t lock;
+    struct mutex lock;
 
     struct list_head privates;     /* Protected by lock */
     struct argo_private *sponsor;  /* Protected by lock */
@@ -682,7 +682,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     }
 
     INIT_LIST_HEAD(&r->privates);
-    spin_lock_init(&r->lock);
+    mutex_init(&r->lock);
     atomic_set(&r->refcnt, 1);
 
     do
@@ -1538,22 +1538,22 @@ argo_interrupt_rx(void)
                 break;
 
             case ARGO_RTYPE_CONNECTOR:
-                spin_lock(&r->lock);
+                mutex_lock(&r->lock);
 
                 while ( (r->ring->tx_ptr != r->ring->rx_ptr)
                         && !connector_interrupt (r))
                     ;
 
-                spin_unlock(&r->lock);
+                mutex_unlock(&r->lock);
                 break;
 
             case ARGO_RTYPE_LISTENER:
-                spin_lock(&r->lock);
+                mutex_lock(&r->lock);
 
                 while ((r->ring->tx_ptr != r->ring->rx_ptr)
                        && !listener_interrupt (r))
                     ;
-                spin_unlock (&r->lock);
+                mutex_unlock(&r->lock);
                 break;
 
             default: /*enum warning */
@@ -2103,11 +2103,11 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
          * For Dgrams, we know the interrupt handler will never use the ring,
          * so leave irqs on
          */
-        spin_lock(&p->r->lock); 
+        mutex_lock(&p->r->lock);
 
         if ( p->r->ring->rx_ptr == p->r->ring->tx_ptr )
         {
-            spin_unlock(&p->r->lock);
+            mutex_unlock(&p->r->lock);
 
 
             if ( nonblock )
@@ -2126,11 +2126,11 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         {
             recover_ring(p->r);
 
-            spin_unlock(&p->r->lock);
+            mutex_unlock(&p->r->lock);
 
             continue;
         }
-        spin_unlock(&p->r->lock);
+        mutex_unlock(&p->r->lock);
 
         if ( !peek )
             argo_null_notify();
