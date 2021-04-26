@@ -314,7 +314,7 @@ struct argo_private
     uint32_t conid;
 
     /* Protects pending messages, and pending_error */
-    spinlock_t pending_recv_lock;
+    struct mutex pending_recv_lock;
 
     struct list_head pending_recv_list; /*For LISTENER contains only ... */
     atomic_t pending_recv_count;
@@ -1002,9 +1002,9 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
     /* Too much queued? Let the ring take the strain */
     if ( atomic_read(&p->pending_recv_count) > MAX_PENDING_RECVS )
     {
-        spin_lock(&p->pending_recv_lock);
+        mutex_lock(&p->pending_recv_lock);
         p->full = 1;
-        spin_unlock(&p->pending_recv_lock);
+        mutex_unlock(&p->pending_recv_lock);
 
         return -1;
     }
@@ -1037,11 +1037,11 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
            pending, k, p->state, atomic_read (&p->pending_recv_count));
     print_hex_dump_bytes("Pending recv: ", DUMP_PREFIX_OFFSET, &pending->sh, len);
 
-    spin_lock(&p->pending_recv_lock);
+    mutex_lock(&p->pending_recv_lock);
     list_add_tail(&pending->node, &p->pending_recv_list);
     atomic_inc(&p->pending_recv_count);
     p->full = 0;
-    spin_unlock (&p->pending_recv_lock);
+    mutex_unlock(&p->pending_recv_lock);
 
     return 0;
 }
@@ -1246,9 +1246,9 @@ connector_state_machine(struct argo_private *p, struct argo_stream_header *sh)
             {
                 p->state = ARGO_STATE_CONNECTED;
 
-                spin_lock(&p->pending_recv_lock);
+                mutex_lock(&p->pending_recv_lock);
                 p->pending_error = 0;
-                spin_unlock(&p->pending_recv_lock);
+                mutex_unlock(&p->pending_recv_lock);
 
                 wake_up_interruptible_all(&p->writeq);
                 return 0;
@@ -1273,9 +1273,9 @@ connector_state_machine(struct argo_private *p, struct argo_stream_header *sh)
         {
             case ARGO_STATE_CONNECTING:
             {
-                spin_lock(&p->pending_recv_lock);
+                mutex_lock(&p->pending_recv_lock);
                 p->pending_error = -ECONNREFUSED;
-                spin_unlock(&p->pending_recv_lock);
+                mutex_unlock(&p->pending_recv_lock);
             }
                 /* fall through */
             case ARGO_STATE_CONNECTED:
@@ -1466,7 +1466,7 @@ listener_interrupt(struct ring *r)
 
         if ( r->sponsor )
         {
-            spin_lock(&r->sponsor->pending_recv_lock);
+            mutex_lock(&r->sponsor->pending_recv_lock);
             list_for_each_entry_safe(pending, t, &r->sponsor->pending_recv_list,
                                      node)
             {
@@ -1479,7 +1479,7 @@ listener_interrupt(struct ring *r)
                     break;
                 }
             }
-            spin_unlock(&r->sponsor->pending_recv_lock);
+            mutex_unlock(&r->sponsor->pending_recv_lock);
         }
 
         /* Rst to a listener, should be picked up above for the connexion, drop it */
@@ -2179,7 +2179,6 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
     size_t count = 0;
     int eat;
     int ret;
-    unsigned long flags;
     int schedule_irq = 0;
 
     struct pending_recv *pending;
@@ -2212,7 +2211,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
     for (;;)
     {
 
-        spin_lock_irqsave(&p->pending_recv_lock, flags);
+        mutex_lock(&p->pending_recv_lock);
         while ( !list_empty(&p->pending_recv_list) && len )
         {
             pending = list_first_entry(&p->pending_recv_list,
@@ -2229,7 +2228,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                 to_copy = pending->data_len - pending->data_ptr;
             }
 
-            spin_unlock_irqrestore(&p->pending_recv_lock, flags);
+            mutex_unlock(&p->pending_recv_lock);
 
             if ( !access_ok_wrapper(VERIFY_WRITE, buf, to_copy) )
             {
@@ -2246,7 +2245,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                     pending->data_ptr, pending->data);
                 /* FIXME: error exit action here? */
 
-            spin_lock_irqsave(&p->pending_recv_lock, flags);
+            mutex_lock(&p->pending_recv_lock);
 
             if ( !eat )
             {
@@ -2272,7 +2271,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             count += to_copy;
             len -= to_copy;
         }
-        spin_unlock_irqrestore(&p->pending_recv_lock, flags);
+        mutex_unlock(&p->pending_recv_lock);
 
         up_read(&list_sem);
 
@@ -2762,7 +2761,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
         init_waitqueue_head(&a->readq);
         init_waitqueue_head(&a->writeq);
-        spin_lock_init(&a->pending_recv_lock);
+        mutex_init(&a->pending_recv_lock);
         INIT_LIST_HEAD(&a->pending_recv_list);
         atomic_set(&a->pending_recv_count, 0);
 
@@ -3000,7 +2999,7 @@ argo_open_dgram(struct inode *inode, struct file *f)
     init_waitqueue_head(&p->readq);
     init_waitqueue_head(&p->writeq);
 
-    spin_lock_init(&p->pending_recv_lock);
+    mutex_init(&p->pending_recv_lock);
     INIT_LIST_HEAD(&p->pending_recv_list);
     atomic_set(&p->pending_recv_count, 0);
 
@@ -3032,7 +3031,7 @@ argo_open_stream(struct inode *inode, struct file *f)
     init_waitqueue_head(&p->readq);
     init_waitqueue_head(&p->writeq);
 
-    spin_lock_init(&p->pending_recv_lock);
+    mutex_init(&p->pending_recv_lock);
     INIT_LIST_HEAD(&p->pending_recv_list);
     atomic_set(&p->pending_recv_count, 0);
 
@@ -3075,7 +3074,7 @@ argo_release(struct inode *inode, struct file *f)
          */
             case ARGO_STATE_LISTENING:
             {
-                spin_lock (&p->r->sponsor->pending_recv_lock);
+                mutex_lock(&p->r->sponsor->pending_recv_lock);
 
                 list_for_each_entry_safe(pending, t,
                                          &p->r->sponsor->pending_recv_list,
@@ -3092,7 +3091,7 @@ argo_release(struct inode *inode, struct file *f)
                         kfree(pending);
                     }
                 }
-                spin_unlock(&p->r->sponsor->pending_recv_lock);
+                mutex_unlock(&p->r->sponsor->pending_recv_lock);
                 break;
             }
             case ARGO_STATE_CONNECTED:
@@ -3314,7 +3313,6 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         break;
         case ARGOIOCGETCONNECTERR:
         {
-            unsigned long flags;
             pr_debug("Start: GETCONNECTERR=%x pid=%d\n", cmd, current->pid);
 
             if ( !access_ok_wrapper(VERIFY_WRITE, arg, sizeof(int)) )
@@ -3323,7 +3321,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                 break;
             }
 
-            spin_lock_irqsave (&p->pending_recv_lock, flags);
+            mutex_lock(&p->pending_recv_lock);
             if ( put_user (p->pending_error, (int __user *)arg) )
                 rc = -EFAULT;
             else
@@ -3331,7 +3329,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                 p->pending_error = 0;
                 rc = 0;
             }
-            spin_unlock_irqrestore (&p->pending_recv_lock, flags);
+            mutex_unlock(&p->pending_recv_lock);
         }
         break;
         case ARGOIOCLISTEN:
