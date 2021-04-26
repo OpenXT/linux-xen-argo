@@ -1515,7 +1515,11 @@ argo_interrupt_rx(void)
 {
     struct ring *r;
 
+    static DEFINE_MUTEX(interrupt_mutex);
 
+    /* serialize this function from argo_work_fn via a real IRQ/workqueue and
+     * argo_recv_stream from a fake irq. */
+    mutex_lock(&interrupt_mutex);
     down_read(&list_sem);
 
     /* Wake up anyone pending*/
@@ -1560,7 +1564,9 @@ argo_interrupt_rx(void)
                 break;
         }
     }
+
     up_read(&list_sem);
+    mutex_unlock(&interrupt_mutex);
 }
 
 static struct workqueue_struct *argo_wq;
@@ -1585,21 +1591,6 @@ argo_interrupt(int irq, void *dev_id)
     spin_unlock_irqrestore(&interrupt_lock, flags);
     return IRQ_HANDLED;
 }
-
-static void
-argo_fake_irq(void)
-{
-    unsigned long flags;
-
-    spin_lock_irqsave(&interrupt_lock, flags);
-
-    argo_interrupt_rx();
-    argo_null_notify();
-
-    spin_unlock_irqrestore(&interrupt_lock, flags);
-}
-
-
 
 /******************************* file system gunge *************/
 
@@ -2276,8 +2267,10 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
         up_read(&list_sem);
 
 #if 1
-        if ( schedule_irq )
-            argo_fake_irq ();
+        if ( schedule_irq ) {
+            argo_interrupt_rx();
+            argo_null_notify();
+        }
 #endif
 
         if ( p->state == ARGO_STATE_DISCONNECTED )
