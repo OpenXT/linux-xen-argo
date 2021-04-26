@@ -55,6 +55,7 @@
 #include <linux/module.h>
 #include <linux/vmalloc.h>
 #include <linux/interrupt.h>
+#include <linux/rwsem.h>
 #include <linux/spinlock.h>
 #include <linux/list.h>
 #include <linux/socket.h>
@@ -136,7 +137,7 @@ typedef enum
 } argo_state;
 
 
-static rwlock_t list_lock;
+static struct rw_semaphore list_sem;
 static struct list_head ring_list;
 
 /*----------------- message formatting ---------------------*/
@@ -267,7 +268,7 @@ argo_copy_out(struct xen_argo_ring *r, uint32_t ring_size,
 
 struct argo_private;
 
-/* Ring pointer itself is protected by the refcnt, the lists its in by list_lock.
+/* Ring pointer itself is protected by the refcnt, the lists its in by list_sem.
  * It's permittable to decrement the refcnt whilst holding the read lock,
  * and then clean up refcnt=0 rings later.
  * If a ring has (refcnt != 0) we expect ->ring to be non NULL, and for the ring to 
@@ -656,7 +657,6 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     struct argo_ring_id id = *pid;
     struct ring *r;
     int ret;
-    unsigned long flags;
 
 
     if ( id.domain_id != XEN_ARGO_DOMID_ANY )
@@ -688,7 +688,7 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
     {
         /* ret = -EINVAL; kfree(r); return ret; DISABLE */
 
-        write_lock_irqsave (&list_lock, flags);
+        down_write(&list_sem);
         if ( sponsor->state != ARGO_STATE_IDLE )
         {
             ret = -EINVAL;
@@ -727,13 +727,12 @@ new_ring(struct argo_private *sponsor, struct argo_ring_id *pid)
 
 
         list_add(&r->node, &ring_list);
-        write_unlock_irqrestore(&list_lock, flags);
-
+        up_write(&list_sem);
         return 0;
     }
     while (0);
 
-    write_unlock_irqrestore(&list_lock, flags);
+    up_write(&list_sem);
 
     vfree(r->ring);
     kfree(r->gfn_array);
@@ -1050,7 +1049,7 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
 /*******************************************notify *********************************/
 
 
-/*caller must hold list_lock*/
+/*caller must hold list_sem read*/
 static void
 wakeup_privates(struct argo_ring_id *id, xen_argo_addr_t * peer, uint32_t conid)
 {
@@ -1073,7 +1072,7 @@ wakeup_privates(struct argo_ring_id *id, xen_argo_addr_t * peer, uint32_t conid)
     }
 }
 
-/*caller must hold list_lock*/
+/*caller must hold list_sem*/
 static void
 wakeup_sponsor(struct argo_ring_id *id)
 {
@@ -1091,7 +1090,7 @@ argo_null_notify(void)
     H_argo_notify(NULL);
 }
 
-/*caller must hold list_lock*/
+/*caller must hold list_sem*/
 static void
 argo_notify(void)
 {
@@ -1518,7 +1517,7 @@ argo_interrupt_rx(void)
     struct ring *r;
 
 
-    read_lock(&list_lock);
+    down_read(&list_sem);
 
     /* Wake up anyone pending*/
     list_for_each_entry(r, &ring_list, node)
@@ -1562,7 +1561,7 @@ argo_interrupt_rx(void)
                 break;
         }
     }
-    read_unlock (&list_lock);
+    up_read(&list_sem);
 }
 
 static struct workqueue_struct *argo_wq;
@@ -2003,7 +2002,7 @@ argo_get_sock_name (struct argo_private *p, struct argo_ring_id *id)
 {
     int rc = 0;
 
-    read_lock (&list_lock);
+    down_read(&list_sem);
 
     if ( (p->r) && (p->r->ring) )
         *id = p->r->id;
@@ -2015,7 +2014,7 @@ argo_get_sock_name (struct argo_private *p, struct argo_ring_id *id)
         id->aport = 0;
     }
 
-    read_unlock (&list_lock);
+    up_read(&list_sem);
 
     return rc;
 }
@@ -2025,7 +2024,7 @@ argo_get_peer_name (struct argo_private *p, xen_argo_addr_t * id)
 {
     int rc = 0;
 
-    read_lock (&list_lock);
+    down_read(&list_sem);
 
     switch (p->state)
     {
@@ -2040,7 +2039,7 @@ argo_get_peer_name (struct argo_private *p, xen_argo_addr_t * id)
           rc = -ENOTCONN;
     }
 
-    read_unlock (&list_lock);
+    up_read(&list_sem);
 
     return rc;
 }
@@ -2056,16 +2055,16 @@ argo_set_ring_size(struct argo_private *p, uint32_t ring_size)
     if ( ring_size != XEN_ARGO_ROUNDUP(ring_size) )
         return -EINVAL;
 
-    read_lock(&list_lock);
+    down_read(&list_sem);
 
     if ( p->state != ARGO_STATE_IDLE )
     {
-        read_unlock (&list_lock);
+        up_read(&list_sem);
         return -EINVAL;
     }
     p->desired_ring_size = ring_size;
 
-    read_unlock(&list_lock);
+    up_read(&list_sem);
 
     return 0;
 }
@@ -2085,7 +2084,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
     pr_debug("argo_recvfrom_dgram buff:%p len:%zu nonblock:%d peek:%d \n",
            buf, len, nonblock, peek);
 
-    read_lock(&list_lock);
+    down_read(&list_sem);
 
     for (;;)
     {
@@ -2093,12 +2092,12 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         if ( !nonblock )
         {
             /* drop the list lock while waiting */
-            read_unlock(&list_lock);
+            up_read(&list_sem);
 
             ret = wait_event_interruptible(p->readq,
                                   (p->r->ring->rx_ptr != p->r->ring->tx_ptr));
 
-            read_lock(&list_lock);
+            down_read(&list_sem);
 
             if ( ret )
                 break;
@@ -2171,7 +2170,7 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
         }
     }
 
-    read_unlock(&list_lock);
+    up_read(&list_sem);
 
     return ret;
 }
@@ -2190,18 +2189,18 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
     struct pending_recv *pending;
     uint8_t *buf = (void *) _buf;
 
-    read_lock(&list_lock);
+    down_read(&list_sem);
 
     switch (p->state)
     {
         case ARGO_STATE_DISCONNECTED:
         {
-            read_unlock(&list_lock);
+            up_read(&list_sem);
             return -EPIPE;
         }
         case ARGO_STATE_CONNECTING:
         {
-            read_unlock(&list_lock);
+            up_read(&list_sem);
             return -ENOTCONN;
         }
         case ARGO_STATE_CONNECTED:
@@ -2209,7 +2208,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             break;
         default:
         {
-            read_unlock(&list_lock);
+            up_read(&list_sem);
             return -EINVAL;
         }
     }
@@ -2279,7 +2278,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
         }
         spin_unlock_irqrestore(&p->pending_recv_lock, flags);
 
-        read_unlock(&list_lock);
+        up_read(&list_sem);
 
 #if 1
         if ( schedule_irq )
@@ -2312,7 +2311,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             return count;
 
 
-        read_lock (&list_lock);
+        down_read(&list_sem);
     }
 }
 
@@ -2694,7 +2693,6 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     int ret = 0;
     struct argo_private *a = NULL;
     struct pending_recv *r;
-    unsigned long flags;
 
 
     if ( p->ptype != ARGO_PTYPE_STREAM )
@@ -2717,7 +2715,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             return ret;
 
         /*Write lock impliciity has pending_recv_lock */
-        write_lock_irqsave(&list_lock, flags); 
+        down_write(&list_sem);
 
         if ( !list_empty(&p->pending_recv_list) )
         {
@@ -2734,14 +2732,13 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             kfree(r);
         }
 
-        write_unlock_irqrestore(&list_lock, flags);
+        up_write(&list_sem);
 
         if ( nonblock )
             return -EAGAIN;
     }
 
-    write_unlock_irqrestore(&list_lock, flags);
-
+    up_write(&list_sem);
 
     do
     {
@@ -2788,9 +2785,9 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             break;
         }
 
-        write_lock_irqsave(&list_lock, flags);
+        down_write(&list_sem);
         list_add(&a->node, &a->r->privates);
-        write_unlock_irqrestore(&list_lock, flags);
+        up_write(&list_sem);
 
 /*Ship the ack -- */
         {
@@ -2829,12 +2826,12 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     {
         int need_ring_free = 0;
 
-        write_lock_irqsave(&list_lock, flags);
+        down_write(&list_sem);
 
         if ( a->r )
             need_ring_free = put_ring(a->r);
 
-        write_unlock_irqrestore(&list_lock, flags);
+        up_write(&list_sem);
 
         if ( need_ring_free )
             free_ring(a->r);
@@ -3056,7 +3053,6 @@ static int
 argo_release(struct inode *inode, struct file *f)
 {
     struct argo_private *p = (struct argo_private *) f->private_data;
-    unsigned long flags;
     struct pending_recv *pending, *t;
     static volatile char tmp;
     int need_ring_free = 0;
@@ -3115,12 +3111,12 @@ argo_release(struct inode *inode, struct file *f)
         }
     }
 
-    write_lock_irqsave (&list_lock, flags);
+    down_write(&list_sem);
     do
     {
         if ( !p->r )
         {
-            write_unlock_irqrestore(&list_lock, flags);
+            up_write(&list_sem);
             break;
         }
 
@@ -3129,7 +3125,7 @@ argo_release(struct inode *inode, struct file *f)
 
             need_ring_free = put_ring (p->r);
             list_del(&p->node);
-            write_unlock_irqrestore(&list_lock, flags);
+            up_write(&list_sem);
 
             break;
         }
@@ -3138,7 +3134,7 @@ argo_release(struct inode *inode, struct file *f)
 
         p->r->sponsor = NULL;
         need_ring_free = put_ring(p->r);
-        write_unlock_irqrestore(&list_lock, flags);
+        up_write(&list_sem);
 
         {
             struct pending_recv *pending;
@@ -3588,7 +3584,7 @@ argo_poll(struct file *f, poll_table * pt)
 //FIXME
     unsigned int mask = 0;
     struct argo_private *p = f->private_data;
-    read_lock(&list_lock);
+    down_read(&list_sem);
 
     switch (p->ptype)
     {
@@ -3640,7 +3636,7 @@ argo_poll(struct file *f, poll_table * pt)
             break;
     }
 
-    read_unlock(&list_lock);
+    up_read(&list_sem);
     return mask;
 }
 
@@ -3766,7 +3762,7 @@ argo_resume(struct platform_device *dev)
 {
     struct ring *r;
 
-    read_lock(&list_lock);
+    down_read(&list_sem);
 
     list_for_each_entry(r, &ring_list, node)
     {
@@ -3779,7 +3775,7 @@ argo_resume(struct platform_device *dev)
         }
     }
 
-    read_unlock(&list_lock);
+    up_read(&list_sem);
 
     if ( bind_signal() )
     {
@@ -3810,7 +3806,7 @@ argo_probe(struct platform_device *dev)
         return ret;
 
     INIT_LIST_HEAD(&ring_list);
-    rwlock_init(&list_lock);
+    init_rwsem(&list_sem);
     INIT_LIST_HEAD(&pending_xmit_list);
     spin_lock_init(&pending_xmit_lock);
     spin_lock_init(&interrupt_lock);
