@@ -1565,6 +1565,8 @@ argo_interrupt_rx(void)
     read_unlock (&list_lock);
 }
 
+static struct workqueue_struct *argo_wq;
+
 static void argo_work_fn(struct work_struct *work)
 {
     argo_interrupt_rx();
@@ -1580,7 +1582,7 @@ argo_interrupt(int irq, void *dev_id)
 
     spin_lock_irqsave(&interrupt_lock, flags);
 
-    schedule_work(&argo_work);
+    queue_work(argo_wq, &argo_work);
 
     spin_unlock_irqrestore(&interrupt_lock, flags);
     return IRQ_HANDLED;
@@ -3895,9 +3897,14 @@ argo_init(void)
 #endif
 #endif
 
+    argo_wq = alloc_workqueue("argo_wq", WQ_UNBOUND | WQ_HIGHPRI | WQ_SYSFS, 1);
+    if ( argo_wq == NULL )
+        return -ENOMEM;
+
     error = platform_driver_register(&argo_driver);
-    if ( error )
-        return error;
+    if ( error ) {
+        goto error_destroy_wq;
+    }
 
     argo_platform_device = platform_device_alloc("argo", -1);
     if ( !argo_platform_device )
@@ -3918,6 +3925,8 @@ argo_init(void)
     platform_device_put(argo_platform_device);
  error_driver_unregister:
     platform_driver_unregister(&argo_driver);
+ error_destroy_wq:
+    destroy_workqueue(argo_wq);
 
     return error;
 }
@@ -3927,6 +3936,7 @@ argo_cleanup(void)
 {
   platform_device_unregister(argo_platform_device);
   platform_driver_unregister(&argo_driver);
+  destroy_workqueue(argo_wq);
 }
 
 module_init(argo_init);
