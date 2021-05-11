@@ -860,7 +860,7 @@ xmit_queue_wakeup_private(struct argo_ring_id *from,
     if ( delete )
         return;
 
-    p = kmalloc( sizeof(struct pending_xmit), GFP_ATOMIC );
+    p = kmalloc( sizeof(struct pending_xmit), GFP_KERNEL );
     if ( !p )
     {
         pr_err("Out of memory trying to queue an xmit private wakeup\n");
@@ -909,7 +909,7 @@ xmit_queue_wakeup_sponsor(struct argo_ring_id *from, xen_argo_addr_t * to, int l
         return;
 
 
-    p = kmalloc(sizeof(struct pending_xmit), GFP_ATOMIC);
+    p = kmalloc(sizeof(struct pending_xmit), GFP_KERNEL);
     if ( !p )
     {
         pr_err("Out of memory trying to queue an xmit sponsor wakeup\n");
@@ -953,7 +953,7 @@ xmit_queue_inline(struct argo_ring_id *from, xen_argo_addr_t *to,
         return ret;
     }
 
-    p = kmalloc(sizeof(struct pending_xmit) + len, GFP_ATOMIC);
+    p = kmalloc(sizeof(struct pending_xmit) + len, GFP_KERNEL);
     if ( !p )
     {
         mutex_unlock(&pending_xmit_lock);
@@ -1010,8 +1010,8 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
     }
 
     pending = kmalloc(sizeof(struct pending_recv) -
-                             sizeof(struct argo_stream_header) + len,
-                           GFP_ATOMIC);
+                          sizeof(struct argo_stream_header) + len,
+                      GFP_KERNEL);
     if ( !pending )
         return -1;
 
@@ -1104,7 +1104,7 @@ argo_notify(void)
     nent = atomic_read(&pending_xmit_count);
 
     d = kmalloc(sizeof(xen_argo_ring_data_t) +
-                     nent * sizeof(xen_argo_ring_data_ent_t), GFP_ATOMIC);
+                nent * sizeof(xen_argo_ring_data_ent_t), GFP_KERNEL);
     if ( !d )
     {
         mutex_unlock(&pending_xmit_lock);
