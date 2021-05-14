@@ -57,7 +57,6 @@
 #include <linux/vmalloc.h>
 #include <linux/interrupt.h>
 #include <linux/rwsem.h>
-#include <linux/spinlock.h>
 #include <linux/list.h>
 #include <linux/socket.h>
 #include <linux/workqueue.h>
@@ -337,7 +336,6 @@ struct pending_recv
 } ARGO_PACKED;
 
 
-static spinlock_t interrupt_lock;
 static struct mutex pending_xmit_lock;
 static struct list_head pending_xmit_list;
 static atomic_t pending_xmit_count;
@@ -1582,13 +1580,8 @@ DECLARE_WORK(argo_work, argo_work_fn);
 static irqreturn_t
 argo_interrupt(int irq, void *dev_id)
 {
-    unsigned long flags;
-
-    spin_lock_irqsave(&interrupt_lock, flags);
-
     queue_work(argo_wq, &argo_work);
 
-    spin_unlock_irqrestore(&interrupt_lock, flags);
     return IRQ_HANDLED;
 }
 
@@ -3796,7 +3789,6 @@ argo_probe(struct platform_device *dev)
     init_rwsem(&list_sem);
     INIT_LIST_HEAD(&pending_xmit_list);
     mutex_init(&pending_xmit_lock);
-    spin_lock_init(&interrupt_lock);
     atomic_set(&pending_xmit_count, 0);
 
     if ( bind_signal() )
