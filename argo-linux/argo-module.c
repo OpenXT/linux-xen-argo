@@ -3896,18 +3896,24 @@ argo_init(void)
     argo_platform_device = platform_device_alloc("argo", -1);
     if ( !argo_platform_device )
     {
-        platform_driver_unregister(&argo_driver);
-        return -ENOMEM;
+        error = -ENOMEM;
+        goto error_driver_unregister;
     }
 
     error = platform_device_add(argo_platform_device);
     if ( error )
     {
-        platform_device_put(argo_platform_device);
-        platform_driver_unregister(&argo_driver);
-        return error;
+        goto error_platform_put;
     }
+
     return 0;
+
+ error_platform_put:
+    platform_device_put(argo_platform_device);
+ error_driver_unregister:
+    platform_driver_unregister(&argo_driver);
+
+    return error;
 }
 
 static void __exit
