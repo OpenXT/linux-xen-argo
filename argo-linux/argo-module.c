@@ -3132,26 +3132,24 @@ argo_release(struct inode *inode, struct file *f)
         p->r->sponsor = NULL;
         need_ring_free = put_ring(p->r);
         up_write(&list_sem);
-
-        {
-            struct pending_recv *pending;
-
-            while (!list_empty (&p->pending_recv_list))
-            {
-                pending = list_first_entry(&p->pending_recv_list,
-                                           struct pending_recv,
-                                           node);
-
-                list_del(&pending->node);
-                kfree(pending);
-                atomic_dec(&p->pending_recv_count);
-            }
-        }
     }
     while ( 0 );
 
     if ( need_ring_free )
         free_ring(p->r);
+
+    mutex_lock(&p->pending_recv_lock);
+    while (!list_empty (&p->pending_recv_list))
+    {
+        pending = list_first_entry(&p->pending_recv_list,
+                                   struct pending_recv,
+                                   node);
+
+        list_del(&pending->node);
+        kfree(pending);
+        atomic_dec(&p->pending_recv_count);
+    }
+    mutex_unlock(&p->pending_recv_lock);
 
     kfree (p);
 
