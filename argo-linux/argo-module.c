@@ -2430,6 +2430,14 @@ argo_bind(struct argo_private *p, struct argo_ring_id *ring_id)
         return -EINVAL;
     }
 
+    if ( p->r )
+    {
+        pr_debug("ring already connected %d -> %d:%d", p->r->id.domain_id,
+                 p->r->id.aport, p->r->id.partner_id);
+
+        return -EISCONN;
+    }
+
     pr_debug("argo_bind: %d (d: %d) (s: %d)\n", p->ptype,
            ARGO_PTYPE_DGRAM, ARGO_PTYPE_STREAM);
 
