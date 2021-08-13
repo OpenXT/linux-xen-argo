@@ -3054,6 +3054,9 @@ argo_release(struct inode *inode, struct file *f)
     static volatile char tmp;
     int need_ring_free = 0;
 
+    if ( !p->r )
+        goto free_private;
+
     /* XC-8841 - make sure the ring info is properly mapped so we won't efault in xen
     * passing pointers to hypercalls.
     * Read the first and last byte, that should repage the structure */
@@ -3111,12 +3114,6 @@ argo_release(struct inode *inode, struct file *f)
     down_write(&list_sem);
     do
     {
-        if ( !p->r )
-        {
-            up_write(&list_sem);
-            break;
-        }
-
         if ( p != p->r->sponsor )
         {
 
@@ -3151,6 +3148,7 @@ argo_release(struct inode *inode, struct file *f)
     }
     mutex_unlock(&p->pending_recv_lock);
 
+ free_private:
     kfree (p);
 
     return 0;
