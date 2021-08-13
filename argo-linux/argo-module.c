@@ -3112,25 +3112,16 @@ argo_release(struct inode *inode, struct file *f)
     }
 
     down_write(&list_sem);
-    do
-    {
-        if ( p != p->r->sponsor )
-        {
 
-            need_ring_free = put_ring (p->r);
-            list_del(&p->node);
-            up_write(&list_sem);
-
-            break;
-        }
-
-        //Send RST
-
+    need_ring_free = put_ring(p->r);
+    if ( p == p->r->sponsor ) {
         p->r->sponsor = NULL;
-        need_ring_free = put_ring(p->r);
-        up_write(&list_sem);
+    } else {
+        /* holding list_sem write lock implies p->r->lock */
+        list_del(&p->node);
     }
-    while ( 0 );
+
+    up_write(&list_sem);
 
     if ( need_ring_free )
         free_ring(p->r);
