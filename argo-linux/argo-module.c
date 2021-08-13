@@ -1023,9 +1023,9 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
         return -1;
     }
 
-    pending = kmalloc(sizeof(struct pending_recv) -
-                          sizeof(struct argo_stream_header) + len,
-                      GFP_KERNEL);
+    pending = kvmalloc(sizeof(struct pending_recv) -
+                           sizeof(struct argo_stream_header) + len,
+                       GFP_KERNEL);
     if ( !pending )
         return -1;
 
@@ -1489,7 +1489,7 @@ listener_interrupt(struct ring *r)
                 {
                     list_del(&pending->node);
                     atomic_dec(&r->sponsor->pending_recv_count);
-                    kfree(pending);
+                    kvfree(pending);
                     break;
                 }
             }
@@ -2259,7 +2259,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
 
-                kfree (pending);
+                kvfree(pending);
                 atomic_dec(&p->pending_recv_count);
 
                 if (p->full)
@@ -2726,7 +2726,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             if ( (!r->data_len) && (r->sh.flags & ARGO_SHF_SYN) )
                 break;
 
-            kfree(r);
+            kvfree(r);
         }
 
         up_write(&list_sem);
@@ -2801,7 +2801,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
         pr_debug("argo_accept priv %p => %p\n", p, a);
 
-        kfree(r);
+        kvfree(r);
 
         /*
          * A new fd with a struct file having its struct file_operations in this
@@ -2816,7 +2816,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     }
     while ( 0 );
 
-    kfree (r);
+    kvfree(r);
 
 
     if ( a )
@@ -3090,7 +3090,7 @@ argo_release(struct inode *inode, struct file *f)
 
                         xmit_queue_rst_to(&p->r->id, pending->sh.conid,
                                           &pending->from);
-                        kfree(pending);
+                        kvfree(pending);
                     }
                 }
                 mutex_unlock(&p->r->sponsor->pending_recv_lock);
@@ -3146,7 +3146,7 @@ argo_release(struct inode *inode, struct file *f)
                                    node);
 
         list_del(&pending->node);
-        kfree(pending);
+        kvfree(pending);
         atomic_dec(&p->pending_recv_count);
     }
     mutex_unlock(&p->pending_recv_lock);
