@@ -1,0 +1,48 @@
+name: build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E sed -i~orig -e 's/# deb-src/deb-src/' /etc/apt/sources.list   
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install build-essential wget -y
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+
+    - name: Checkout the module
+      uses: actions/checkout@v2
+      with:
+        path: module
+
+    - name: Checkout the kernel
+      uses: actions/checkout@v2
+      with:
+        repository: torvalds/linux
+        path: kernel
+        ref: v5.4
+
+    - name: Prepare the kernel
+      working-directory: ./kernel
+      run: |
+        wget -O .config https://raw.githubusercontent.com/OpenXT/xenclient-oe/master/recipes-kernel/linux/5.4/defconfigs/xenclient-dom0/defconfig
+        make olddefconfig
+        make -j$(nproc) modules_prepare
+
+    - name: Compile the module
+      working-directory: ./module/argo-linux
+      env:
+        KERNEL_SRC: ${{ github.workspace }}/kernel
+      run: make
