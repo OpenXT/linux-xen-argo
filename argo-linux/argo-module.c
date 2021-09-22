@@ -1023,9 +1023,9 @@ copy_into_pending_recv(struct ring *r, int len, struct argo_private *p)
         return -1;
     }
 
-    pending = kmalloc(sizeof(struct pending_recv) -
-                          sizeof(struct argo_stream_header) + len,
-                      GFP_KERNEL);
+    pending = kvmalloc(sizeof(struct pending_recv) -
+                           sizeof(struct argo_stream_header) + len,
+                       GFP_KERNEL);
     if ( !pending )
         return -1;
 
@@ -1489,7 +1489,7 @@ listener_interrupt(struct ring *r)
                 {
                     list_del(&pending->node);
                     atomic_dec(&r->sponsor->pending_recv_count);
-                    kfree(pending);
+                    kvfree(pending);
                     break;
                 }
             }
@@ -2259,7 +2259,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
 
-                kfree (pending);
+                kvfree(pending);
                 atomic_dec(&p->pending_recv_count);
 
                 if (p->full)
@@ -2726,7 +2726,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
             if ( (!r->data_len) && (r->sh.flags & ARGO_SHF_SYN) )
                 break;
 
-            kfree(r);
+            kvfree(r);
         }
 
         up_write(&list_sem);
@@ -2801,7 +2801,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
 
         pr_debug("argo_accept priv %p => %p\n", p, a);
 
-        kfree(r);
+        kvfree(r);
 
         /*
          * A new fd with a struct file having its struct file_operations in this
@@ -2816,7 +2816,7 @@ argo_accept(struct argo_private *p, struct xen_argo_addr *peer, int nonblock)
     }
     while ( 0 );
 
-    kfree (r);
+    kvfree(r);
 
 
     if ( a )
@@ -3054,6 +3054,9 @@ argo_release(struct inode *inode, struct file *f)
     static volatile char tmp;
     int need_ring_free = 0;
 
+    if ( !p->r )
+        goto free_private;
+
     /* XC-8841 - make sure the ring info is properly mapped so we won't efault in xen
     * passing pointers to hypercalls.
     * Read the first and last byte, that should repage the structure */
@@ -3090,7 +3093,7 @@ argo_release(struct inode *inode, struct file *f)
 
                         xmit_queue_rst_to(&p->r->id, pending->sh.conid,
                                           &pending->from);
-                        kfree(pending);
+                        kvfree(pending);
                     }
                 }
                 mutex_unlock(&p->r->sponsor->pending_recv_lock);
@@ -3109,50 +3112,34 @@ argo_release(struct inode *inode, struct file *f)
     }
 
     down_write(&list_sem);
-    do
-    {
-        if ( !p->r )
-        {
-            up_write(&list_sem);
-            break;
-        }
 
-        if ( p != p->r->sponsor )
-        {
-
-            need_ring_free = put_ring (p->r);
-            list_del(&p->node);
-            up_write(&list_sem);
-
-            break;
-        }
-
-        //Send RST
-
+    need_ring_free = put_ring(p->r);
+    if ( p == p->r->sponsor ) {
         p->r->sponsor = NULL;
-        need_ring_free = put_ring(p->r);
-        up_write(&list_sem);
-
-        {
-            struct pending_recv *pending;
-
-            while (!list_empty (&p->pending_recv_list))
-            {
-                pending = list_first_entry(&p->pending_recv_list,
-                                           struct pending_recv,
-                                           node);
-
-                list_del(&pending->node);
-                kfree(pending);
-                atomic_dec(&p->pending_recv_count);
-            }
-        }
+    } else {
+        /* holding list_sem write lock implies p->r->lock */
+        list_del(&p->node);
     }
-    while ( 0 );
+
+    up_write(&list_sem);
 
     if ( need_ring_free )
         free_ring(p->r);
 
+    mutex_lock(&p->pending_recv_lock);
+    while (!list_empty (&p->pending_recv_list))
+    {
+        pending = list_first_entry(&p->pending_recv_list,
+                                   struct pending_recv,
+                                   node);
+
+        list_del(&pending->node);
+        kvfree(pending);
+        atomic_dec(&p->pending_recv_count);
+    }
+    mutex_unlock(&p->pending_recv_lock);
+
+ free_private:
     kfree (p);
 
     return 0;
