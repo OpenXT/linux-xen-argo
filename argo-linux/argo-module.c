@@ -102,7 +102,9 @@
 # define access_ok_wrapper(type, addr, size) access_ok((type), (addr), (size))
 #endif
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3,9,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,0,0))
+# define argo_random32 get_random_u32
+#elif (LINUX_VERSION_CODE > KERNE_VERISON(3,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0)
 # define argo_random32 prandom_u32
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0) */
 # define argo_random32 random32
